@@ -1,7 +1,7 @@
 # Plant Disease Detection
 
 ## Team Members
-- Jad [@Jad-Kandah]
+- Jad [@jadkandah]
 - Faisal [@faisal-877]
 - Sanad [@MadaniSanad]
 
