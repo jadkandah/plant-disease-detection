@@ -3,7 +3,7 @@
 ## Team Members
 - Jad [@jadkandah]
 - Faisal [@faisal-877]
-- Sanad [@MadaniSanad]
+- Sanad [@sanadf]
 
 ## Project Goal
 To develop an AI-based system that automatically detects plant diseases from leaf images using deep learning techniques.  
