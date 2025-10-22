@@ -2,7 +2,7 @@
 
 ## Team Members
 - Jad [@jadkandah]
-- Faisal [@faisal-877]
+- Faisal [@faisal87-prog]
 - Sanad [@sanadf]
 
 ## Project Goal
