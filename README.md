@@ -1,4 +1,4 @@
-]# Plant Disease Detection
+# Plant Disease Detection
 
 ## Team Members
 - Jad [@Jad-Kandah]
