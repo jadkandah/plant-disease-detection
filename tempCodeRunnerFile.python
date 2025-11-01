@@ -1,0 +1,67 @@
+import os
+from pathlib import Path
+from PIL import Image
+import hashlib
+import pandas as pd
+
+ROOT = Path.cwd()
+DATA_DIR = ROOT / 'data_raw'
+OUT_DIR = ROOT / 'jordan_dataset'
+IMG_OUT = OUT_DIR / 'images'
+METADATA_CSV = OUT_DIR / 'metadata.csv'
+IMG_OUT.mkdir(parents=True, exist_ok=True)
+
+def file_hash_name(path):
+    h = hashlib.sha1()
+    with open(path, 'rb') as f:
+        h.update(f.read())
+    return h.hexdigest() + '.jpg'
+
+def normalize_and_save(src_path, dest_path, size=(512,512)):
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        img = Image.open(src_path).convert('RGB')
+        img = img.resize(size, Image.LANCZOS)
+        img.save(dest_path, format='JPEG', quality=90)
+    except Exception as e:
+        print('Failed processing', src_path, e)
+
+METADATA = []
+
+# Traverse all folders recursively
+for folder in DATA_DIR.rglob('*'):
+    if not folder.is_dir():
+        continue
+    # check if folder has images
+    images = list(folder.glob('*.[jpJP]*[ngG]*'))
+    if not images:
+        continue
+    
+    # Infer crop/disease from folder name
+    name = folder.name
+    if '___' in name:
+        crop, disease = name.split('___',1)
+    elif '_' in name:
+        parts = name.split('_')
+        crop = parts[0].capitalize()
+        disease = '_'.join(parts[1:])
+    else:
+        crop, disease = 'Unknown','Unknown'
+    
+    dst_folder = IMG_OUT / crop / disease
+    dst_folder.mkdir(parents=True, exist_ok=True)
+    
+    for img_file in images:
+        new_name = file_hash_name(img_file)
+        dst_file = dst_folder / new_name
+        normalize_and_save(img_file, dst_file)
+        METADATA.append({
+            'image_path': str(dst_file.relative_to(OUT_DIR)),
+            'crop': crop,
+            'disease': disease,
+            'source': folder.relative_to(DATA_DIR)
+        })
+
+pd.DataFrame(METADATA).to_csv(METADATA_CSV, index=False)
+print('Total images collected:', len(METADATA))
+print('Dataset folder structure ready at:', IMG_OUT)

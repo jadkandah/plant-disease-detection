@@ -1,2 +1,4 @@
 /data
 /.env
+/data_raw
+/jordan_dataset
