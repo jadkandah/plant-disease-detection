@@ -33,7 +33,9 @@ kaggle.com
 
 Main dataset: https://www.kaggle.com/datasets/vipoooool/new-plant-diseases-dataset?utm_source=chatgpt.com
 #####
-GOAL STRUCTURE OF THE DATASET 
+7-8 NOV
+
+NEW STRUCTURE OF THE DATASET 
 jordan_dataset/
 ├── train/
 │   ├── Apple/
@@ -65,6 +67,8 @@ jordan_dataset/
 │   ├── Wheat/
 │   │   ├── Leaf_rust/
 │   │   └── healthy/
+
+
 ####3 these were used in the code to help us merge the datasets and seprate them for training testing and validation 
 ├── metadata.csv
 ├── metadata_train.csv
