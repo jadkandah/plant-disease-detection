@@ -35,7 +35,7 @@ Main dataset: https://www.kaggle.com/datasets/vipoooool/new-plant-diseases-datas
 #####
 GOAL STRUCTURE OF THE DATASET 
 jordan_dataset/
-├── images/
+├── train/
 │   ├── Apple/
 │   │   ├── Apple_scab/
 │   │   └── healthy/
@@ -45,8 +45,33 @@ jordan_dataset/
 │   ├── Wheat/
 │   │   ├── Leaf_rust/
 │   │   └── healthy/
+├── test/
+│   ├── Apple/
+│   │   ├── Apple_scab/
+│   │   └── healthy/
+│   ├── Olive/
+│   │   ├── Peacock_spot/
+│   │   └── healthy/
+│   ├── Wheat/
+│   │   ├── Leaf_rust/
+│   │   └── healthy/
+├── valid/
+│   ├── Apple/
+│   │   ├── Apple_scab/
+│   │   └── healthy/
+│   ├── Olive/
+│   │   ├── Peacock_spot/
+│   │   └── healthy/
+│   ├── Wheat/
+│   │   ├── Leaf_rust/
+│   │   └── healthy/
+####3 these were used in the code to help us merge the datasets and seprate them for training testing and validation 
 ├── metadata.csv
 ├── metadata_train.csv
 ├── metadata_val.csv
 ├── metadata_test.csv
 └── class_counts.csv
+
+#######
+in the code we added data Augmentation (manipulation) for classes who got less than 500 images.
+we used RandomRotate90(), Flip(), Transpose(), RandomBrightnessContrast(), ShiftScaleRotate()
