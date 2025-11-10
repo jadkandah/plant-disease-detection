@@ -1,6 +1,6 @@
 /data
 /.env
 /data_raw
-/jordan_dataset2
+/jordan_dataset
 /src/dissdetector/m2.py
 /src/dissdetector/project_model_resnet_iou.py
