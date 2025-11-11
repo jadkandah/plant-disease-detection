@@ -1,0 +1,113 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #F7F7F7
+  BorderColor #999999
+}
+
+actor Farmer as F
+actor "Agronomist\n/ Extension" as A
+actor "Data/ML Engineer" as M
+actor "System Integrations" as S
+
+rectangle "Mobile App" as APP {
+  usecase "Capture plant photo" as UC1
+  usecase "Crop/Preprocess image" as UC2
+  usecase "Submit for diagnosis" as UC3
+  usecase "View prediction + confidence" as UC4
+  usecase "Get Arabic guidance" as UC5
+  usecase "View history" as UC6
+  usecase "Share case report" as UC7
+  usecase "Rate guidance" as UC8
+  usecase "Offline queue + sync" as UC9
+  usecase "Consent & Privacy controls" as UC10
+  usecase "Report outbreak" as UC11
+}
+
+rectangle "Backend Services" as BE {
+  usecase "Plant & Part Detection" as UC12
+  usecase "Disease Classification" as UC13
+  usecase "Confidence Scoring\n& Thresholding" as UC14
+  usecase "Arabic Translation (LLM)" as UC15
+  usecase "Treatment Guidance Lookup" as UC16
+  usecase "Severe Case Notification" as UC17
+  usecase "Anonymize & Store Cases" as UC18
+  usecase "Role-based Access / Audit" as UC19
+}
+
+rectangle "ML Ops Pipeline" as MLOPS {
+  usecase "Merge Datasets" as UC20
+  usecase "Label Mapping & QC" as UC21
+  usecase "Augment & Split Data" as UC22
+  usecase "Train & Evaluate Model" as UC23
+  usecase "Human-in-the-loop Labeling" as UC24
+  usecase "Version & Deploy Model" as UC25
+  usecase "Monitor Drift/Performance" as UC26
+  usecase "Rollback / Hotfix" as UC27
+}
+
+rectangle "Expert Portal" as EXP {
+  usecase "Triage Low-confidence Cases" as UC28
+  usecase "Publish Local Protocols" as UC29
+  usecase "Broadcast Regional Alerts" as UC30
+  usecase "Outbreak Analytics" as UC31
+}
+
+F --> UC1
+F --> UC2
+F --> UC3
+F --> UC4
+F --> UC5
+F --> UC6
+F --> UC7
+F --> UC8
+F --> UC9
+F --> UC10
+F --> UC11
+
+A --> UC28
+A --> UC29
+A --> UC30
+A --> UC31
+
+M --> UC20
+M --> UC21
+M --> UC22
+M --> UC23
+M --> UC24
+M --> UC25
+M --> UC26
+M --> UC27
+
+UC3 --> UC12
+UC12 --> UC13
+UC13 --> UC14
+UC14 --> UC16
+UC14 --> UC28 : "if confidence < τ"
+UC13 --> UC15
+UC15 --> UC5
+UC16 --> UC5
+UC14 --> UC4
+UC14 --> UC17 : "if severity high"
+UC18 <- UC3
+UC18 <- UC4
+UC18 <- UC5
+UC18 <- UC8
+UC19 .down.> UC28
+UC19 .down.> UC29
+UC19 .down.> UC30
+UC19 .down.> UC31
+
+S --> UC17
+S --> UC19
+
+UC20 --> UC21
+UC21 --> UC22
+UC22 --> UC23
+UC23 --> UC25
+UC24 --> UC21
+UC26 --> UC27 : "on degradation"
+UC26 --> UC23 : "retrain loop"
+
+@enduml
