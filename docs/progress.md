@@ -79,3 +79,9 @@ jordan_dataset/
 #######
 in the code we added data Augmentation (manipulation) for classes who got less than 500 images.
 we used RandomRotate90(), Flip(), Transpose(), RandomBrightnessContrast(), ShiftScaleRotate()
+####
+11 NOV
+
+Made a uml diagram using PlantUML
+![alt text](../out/docs/scratch/image.png)
+This was only a test
