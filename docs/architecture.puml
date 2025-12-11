@@ -1,0 +1,61 @@
+@startuml
+title High-Level Architecture of the Plant Disease Detection System
+
+top to bottom direction
+
+skinparam shadowing true
+skinparam dpi 120
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+skinparam package {
+  BorderColor #444444
+  BackgroundColor #F7F7F7
+  RoundCorner 10
+}
+
+skinparam rectangle {
+  BorderColor #555555
+  BackgroundColor #FFF7E6
+  RoundCorner 12
+}
+
+skinparam arrow {
+  Color #CC3366
+  Thickness 1.5
+}
+
+' ======================= TRAINING SIDE =======================
+package "Training & Model Preparation" as TrainPkg {
+
+  rectangle "Raw Image Datasets" as Datasets
+
+  rectangle "Training Environment\n(Preprocessing, Training, Evaluation)" as TrainEnv
+
+  rectangle "Exported Mobile-Ready Model\n(TFLite / ONNX / TorchScript)" as ModelFile
+}
+
+Datasets --> TrainEnv
+TrainEnv --> ModelFile
+
+
+' ======================= OPERATIONAL SIDE =======================
+package "Operational Environment (Deployment & Usage)" as DeployPkg {
+
+  rectangle "Farmer (User)" as Farmer
+
+  rectangle "Mobile Application" as MobileApp
+
+  rectangle "On-Device Inference\n(Offline Prediction)" as OnDevice
+
+  rectangle "Backend Services\n• User Management & Auth\n• Usage History\n• Translation / Explanation\n• Optional Online Inference" as Backend
+}
+
+Farmer --> MobileApp
+MobileApp --> OnDevice
+ModelFile --> MobileApp : deployed\nmodel
+MobileApp --> Backend : when online
+Backend --> MobileApp
+
+@enduml
