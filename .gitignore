@@ -1,6 +1,80 @@
-/data
-/.env
-/data_raw
-/jordan_dataset
-/src/dissdetector/m2.py
-/src/dissdetector/project_model_resnet_iou.py
+############################################
+# PYTHON ENVIRONMENTS & CACHE
+############################################
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.so
+
+# Byte-compiled / optimized / DLL files
+*.pyo
+*.pyd
+
+############################################
+# JUPYTER NOTEBOOKS
+############################################
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Uncomment this if you want to ignore ALL notebooks:
+# *.ipynb
+
+############################################
+# MACHINE LEARNING / DEEP LEARNING FILES
+############################################
+
+# Model weights & checkpoints
+*.pth
+*.pt
+*.ckpt
+*.onnx
+
+# Training logs
+logs/
+*.log
+
+############################################
+# DATA DIRECTORIES (LARGE FILES)
+############################################
+
+CSV_files/
+resources/
+jordan_dataset/
+out/
+data/
+datasets/
+
+############################################
+# DOCUMENTATION BUILD OUTPUT
+############################################
+
+# MkDocs build directory
+site/
+
+############################################
+# EDITOR / OS JUNK
+############################################
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+############################################
+# TEMP / SCRATCH
+############################################
+
+tempCodeRunnerFile.*
+*.tmp
+*.bak
+*.swp
