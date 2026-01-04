@@ -1,0 +1,86 @@
+@startuml
+title Plant Disease Detector — Deployment Diagram (with User & History Storage)
+
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+'========================
+' Client / Edge Device
+'========================
+node "Farmer's Smartphone\n<<device>>" as phone {
+
+  node "Mobile OS (Android / iOS)\n<<executionEnvironment>>" as os {
+
+    artifact "Plant Disease Detection App\n<<mobile app>>" as app
+
+    database "Local Model Store\n(Offline / fallback model)\n<<file>>" as localModel
+
+    folder "External Storage\n(Camera Roll / Gallery)\n<<external entity>>" as gallery
+
+    component "Network Signal Checker\n(LTE / 5G / Wi-Fi)\n<<service>>" as netCheck
+  }
+}
+
+'========================
+' Network
+'========================
+cloud "Cellular / Internet Network\n<<network>>" as net
+
+'========================
+' Cloud / Backend Server
+'========================
+node "Cloud Backend Server\n<<device>>" as server {
+
+  node "Model Services\n<<executionEnvironment>>" as modelEnv {
+    component "Model API\n(Download latest model)\n<<service>>" as modelAPI
+    database "Model Repository\n(Pretrained models)\n<<database>>" as modelRepo
+  }
+
+  node "Application Backend\n<<executionEnvironment>>" as backendEnv {
+    component "User & Detection API\n<<service>>" as dataAPI
+    database "User & Detection DB\n(Farmers, history, timestamps)\n<<database>>" as dataDB
+  }
+}
+
+'========================
+' Connections
+'========================
+gallery --> app : Read leaf image
+app --> netCheck : Check network signal
+
+'--- Model selection logic
+app --> localModel : Load offline model\n(if weak/no signal)
+
+app --> net : HTTPS request\n(if signal available)
+net --> modelAPI
+modelAPI --> modelRepo : Fetch latest model
+modelAPI --> net
+net --> app : Download latest model
+
+'--- Detection results & user data
+app --> net : HTTPS (JSON)
+net --> dataAPI : Send user data\n+ detection result
+dataAPI --> dataDB : Store farmer profile\n& detection history
+
+'--- UI
+app --> phone : Display disease\n+ confidence\n+ recommendations
+
+'========================
+' Decision Notes
+'========================
+note right of app
+Model Selection:
+- Strong network → Use cloud-downloaded model
+- Weak/no network → Use offline local model
+end note
+
+note right of dataAPI
+Stored Data:
+- Farmer ID / profile
+- Image metadata (optional)
+- Detected disease
+- Confidence score
+- Timestamp & location (optional)
+end note
+
+@enduml
