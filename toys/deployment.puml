@@ -1,0 +1,66 @@
+@startuml
+title Plant Disease Detector — Deployment Diagram
+
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+'========================
+' Client / Edge device
+'========================
+node "Farmer's Smartphone\n<<device>>" as phone {
+
+  node "Mobile OS (Android/iOS)\n<<executionEnvironment>>" as os {
+
+    artifact "Plant Disease App\n<<mobile app>>" as app
+
+    database "Local Model Store\n(Offline model)\n<<file>>" as localModel
+
+    folder "External Storage\n(Camera Roll / Gallery)\n<<external entity>>" as gallery
+
+    component "Network Signal Checker\n(LTE/3G/5G/Wi-Fi)\n<<service>>" as netCheck
+  }
+}
+
+'========================
+' Network
+'========================
+cloud "Cellular / Internet Network\n<<network>>" as net
+
+'========================
+' Cloud / Server side
+'========================
+node "Online Server\n<<device>>" as server {
+  node "Model Service\n<<executionEnvironment>>" as modelSvc {
+    component "Model API\n(Download latest model)\n<<service>>" as api
+    database "Model Repository\n(Latest pretrained models)\n<<database>>" as repo
+  }
+}
+
+'========================
+' Connections
+'========================
+gallery --> app : Read image\n(from camera roll)
+app --> netCheck : Query signal strength
+
+app --> localModel : Load offline model\n(if weak/no signal)
+
+app --> net : HTTPS request\n(if signal available)
+net --> api : Route request
+api --> repo : Fetch latest model metadata/artifact
+api --> net : Return model artifact
+net --> app : Download latest model\n+ settings
+
+app --> phone : Display disease\nin App View (UI)
+
+'========================
+' Behavior note (decision rule)
+'========================
+note right of app
+Decision:
+- If LTE/Internet signal is GOOD:
+    download and use latest model from Online Server
+- Else:
+    use offline (less accurate) model from Local Model Store
+end note
+
+@enduml
