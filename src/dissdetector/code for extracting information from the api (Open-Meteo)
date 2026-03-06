@@ -1,0 +1,192 @@
+import os
+import random
+from pathlib import Path
+from datetime import datetime, timedelta
+
+import requests
+import pandas as pd
+from tqdm import tqdm
+
+# =========================
+# Configuration
+# =========================
+ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
+DATASET_PATH = ROOT / "jordan_dataset2"   # contains train / val / test
+OUTPUT_CSV = DATASET_PATH / "metadata_weather.csv"
+
+# Example location: Amman, Jordan
+LATITUDE = 31.9539
+LONGITUDE = 35.9106
+TIMEZONE = "Asia/Amman"
+
+# Random date range for testing
+RANDOM_START = datetime(2023, 1, 1)
+RANDOM_END   = datetime(2025, 12, 31)
+
+FEATURE_COLS = [
+    "temp_c",
+    "humidity_pct",
+    "wind_m_s",
+    "precip_mm",
+    "soil_moisture_pct",
+]
+
+IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
+
+# =========================
+# Helpers
+# =========================
+def list_images(base_dir: Path):
+    """
+    Returns relative image paths like:
+    train/Tomato/Leaf_Mold/img1.jpg
+    """
+    image_paths = []
+
+    for split in ["train", "val", "test"]:
+        split_dir = base_dir / split
+        if not split_dir.is_dir():
+            print(f"Warning: missing split folder: {split_dir}")
+            continue
+
+        for root, _, files in os.walk(split_dir):
+            for fname in files:
+                fpath = Path(root) / fname
+                if fpath.suffix.lower() in IMG_EXTS:
+                    rel_path = fpath.relative_to(base_dir).as_posix()
+                    image_paths.append(rel_path)
+
+    return sorted(image_paths)
+
+
+def random_datetime(start_dt: datetime, end_dt: datetime) -> datetime:
+    total_seconds = int((end_dt - start_dt).total_seconds())
+    rand_seconds = random.randint(0, total_seconds)
+    return start_dt + timedelta(seconds=rand_seconds)
+
+
+def round_to_hour(dt: datetime) -> datetime:
+    return dt.replace(minute=0, second=0, microsecond=0)
+
+
+def fetch_hourly_weather_for_day(lat: float, lon: float, day_str: str, timezone: str):
+    url = "https://archive-api.open-meteo.com/v1/archive"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "start_date": day_str,
+        "end_date": day_str,
+        "hourly": [
+            "temperature_2m",
+            "relative_humidity_2m",
+            "wind_speed_10m",
+            "precipitation",
+            "soil_moisture_0_to_7cm",
+        ],
+        "wind_speed_unit": "ms",
+        "precipitation_unit": "mm",
+        "temperature_unit": "celsius",
+        "timezone": timezone,
+    }
+
+    response = requests.get(url, params=params, timeout=30)
+    response.raise_for_status()
+    return response.json()
+
+
+def build_hourly_lookup(api_json: dict):
+    hourly = api_json.get("hourly", {})
+    times = hourly.get("time", [])
+
+    temp = hourly.get("temperature_2m", [])
+    humidity = hourly.get("relative_humidity_2m", [])
+    wind = hourly.get("wind_speed_10m", [])
+    precip = hourly.get("precipitation", [])
+    soil = hourly.get("soil_moisture_0_to_7cm", [])
+
+    lookup = {}
+    for i, t in enumerate(times):
+        lookup[t] = {
+            "temp_c": temp[i] if i < len(temp) else None,
+            "humidity_pct": humidity[i] if i < len(humidity) else None,
+            "wind_m_s": wind[i] if i < len(wind) else None,
+            "precip_mm": precip[i] if i < len(precip) else None,
+            "soil_moisture_pct": soil[i] * 100.0 if i < len(soil) and soil[i] is not None else None,
+        }
+    return lookup
+
+
+# =========================
+# Main
+# =========================
+def generate_metadata():
+    if not DATASET_PATH.is_dir():
+        raise RuntimeError(f"Dataset path not found: {DATASET_PATH}")
+
+    image_rel_paths = list_images(DATASET_PATH)
+    if not image_rel_paths:
+        raise RuntimeError(f"No images found under: {DATASET_PATH}")
+
+    print(f"Found {len(image_rel_paths)} images.")
+
+    image_dates = {}
+    unique_days = set()
+
+    for rel_path in image_rel_paths:
+        dt = round_to_hour(random_datetime(RANDOM_START, RANDOM_END))
+        image_dates[rel_path] = dt
+        unique_days.add(dt.strftime("%Y-%m-%d"))
+
+    print(f"Need weather data for {len(unique_days)} unique days.")
+
+    daily_cache = {}
+
+    for day_str in tqdm(sorted(unique_days), desc="Fetching weather"):
+        try:
+            api_json = fetch_hourly_weather_for_day(
+                LATITUDE, LONGITUDE, day_str, TIMEZONE
+            )
+            daily_cache[day_str] = build_hourly_lookup(api_json)
+        except Exception as e:
+            print(f"Failed to fetch {day_str}: {e}")
+            daily_cache[day_str] = {}
+
+    rows = []
+    missing_count = 0
+
+    for rel_path in tqdm(image_rel_paths, desc="Building CSV"):
+        dt = image_dates[rel_path]
+        day_str = dt.strftime("%Y-%m-%d")
+        hour_key = dt.strftime("%Y-%m-%dT%H:00")
+
+        hourly_lookup = daily_cache.get(day_str, {})
+        weather = hourly_lookup.get(hour_key)
+
+        if weather is None:
+            missing_count += 1
+            weather = {
+                "temp_c": None,
+                "humidity_pct": None,
+                "wind_m_s": None,
+                "precip_mm": None,
+                "soil_moisture_pct": None,
+            }
+
+        rows.append({
+            "image_rel_path": rel_path,
+            "random_datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
+            **weather,
+        })
+
+    df = pd.DataFrame(rows)
+    df = df[["image_rel_path"] + FEATURE_COLS + ["random_datetime"]]
+
+    df.to_csv(OUTPUT_CSV, index=False)
+
+    print(f"\nSaved CSV to: {OUTPUT_CSV}")
+    print(f"Missing weather rows: {missing_count}")
+    print(df.head())
+
+
+if __name__ == "__main__":
+    generate_metadata()
