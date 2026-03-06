@@ -78,3 +78,19 @@ tempCodeRunnerFile.*
 *.tmp
 *.bak
 *.swp
+
+############################################
+# Data
+############################################
+
+jordan_dataset/
+
+
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pth
