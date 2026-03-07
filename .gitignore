@@ -7,14 +7,12 @@
 venv/
 env/
 
-# Python cache
+# Python cache / compiled files
 __pycache__/
 *.py[cod]
-*.so
-
-# Byte-compiled / optimized / DLL files
 *.pyo
 *.pyd
+*.so
 
 ############################################
 # JUPYTER NOTEBOOKS
@@ -23,7 +21,7 @@ __pycache__/
 # Notebook checkpoints
 .ipynb_checkpoints/
 
-# Uncomment this if you want to ignore ALL notebooks:
+# Uncomment if you want to ignore all notebooks
 # *.ipynb
 
 ############################################
@@ -36,9 +34,19 @@ __pycache__/
 *.ckpt
 *.onnx
 
-# Training logs
+# Saved experiment outputs
+saved_models/
+mlruns/
+
+# Training / runtime logs
 logs/
 *.log
+
+############################################
+# MLFLOW
+############################################
+
+mlflow.db
 
 ############################################
 # DATA DIRECTORIES (LARGE FILES)
@@ -55,7 +63,6 @@ datasets/
 # DOCUMENTATION BUILD OUTPUT
 ############################################
 
-# MkDocs build directory
 site/
 
 ############################################
@@ -66,7 +73,7 @@ site/
 .vscode/
 *.code-workspace
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
@@ -78,19 +85,3 @@ tempCodeRunnerFile.*
 *.tmp
 *.bak
 *.swp
-
-############################################
-# Data
-############################################
-
-jordan_dataset/
-
-
-.venv/
-venv/
-env/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.pth

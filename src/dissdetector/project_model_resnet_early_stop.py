@@ -419,6 +419,38 @@ def train_model(model, dataloaders, dataset_sizes, criterion, optimizer, schedul
     model.load_state_dict(best_model_wts)
     return model
 
+def evaluate_model(model, dataloader, num_classes):
+    model.eval()
+
+    running_corrects = 0
+    seen = 0
+    confmat = torch.zeros((num_classes, num_classes), dtype=torch.long)
+
+    with torch.no_grad():
+        for inputs, labels in dataloader:
+
+            if inputs.numel() == 0:
+                continue
+
+            inputs = inputs.to(DEVICE)
+            labels = labels.to(DEVICE)
+
+            outputs = model(inputs)
+            _, preds = torch.max(outputs, 1)
+
+            running_corrects += torch.sum(preds == labels).item()
+            seen += inputs.size(0)
+
+            confmat += compute_confusion_matrix(preds, labels, num_classes)
+
+    accuracy = running_corrects / seen if seen > 0 else float("nan")
+    miou = compute_miou_from_confmat(confmat)
+
+    return {
+        "accuracy": accuracy,
+        "miou": miou
+    }
+
 # =========================
 # Main
 # =========================

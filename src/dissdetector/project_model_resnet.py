@@ -26,8 +26,8 @@ ROOT = Path("/home/jad/plant-disease-detection/plant-disease-detection")
 DATASET_PATH = ROOT / "jordan_dataset" / "images"
 
 # Safer defaults for laptop GPUs; you can raise later
-BATCH_SIZE = 8           # try 4 if VRAM is tight
-NUM_EPOCHS = 1
+BATCH_SIZE = 4           # try 4 if VRAM is tight
+NUM_EPOCHS = 30
 LEARNING_RATE = 1e-3
 IMAGE_SIZE = 384         # try 256 for even lower memory
 
