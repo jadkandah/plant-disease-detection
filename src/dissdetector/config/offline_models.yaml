@@ -1,23 +1,23 @@
 experiment_name: plant_disease_offline_models
 
 runs:
-  - run_name: mobilenet_v3_small_224
+  - run_name: mobilenet_v3_small_224_epochs25
     model_name: mobilenet_v3_small
-    batch_size: 2
+    batch_size: 4
     learning_rate: 0.001
-    epochs: 5
+    epochs: 25
     image_size: 224
 
-  - run_name: mobilenet_v3_large_224
+  - run_name: mobilenet_v3_large_224_epochs30
     model_name: mobilenet_v3_large
-    batch_size: 2
+    batch_size: 4
     learning_rate: 0.001
-    epochs: 5
+    epochs: 30
     image_size: 224
 
-  - run_name: efficientnet_b0_224
+  - run_name: efficientnet_b0_224_epochs30
     model_name: efficientnet_b0
-    batch_size: 2
+    batch_size: 4
     learning_rate: 0.001
-    epochs: 5
+    epochs: 30
     image_size: 224
