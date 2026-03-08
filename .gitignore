@@ -58,6 +58,9 @@ jordan_dataset/
 out/
 data/
 datasets/
+data_raw/
+jordan_dataset2/
+src/dissdetector/project_model_resnet_iou.py\
 
 ############################################
 # DOCUMENTATION BUILD OUTPUT
