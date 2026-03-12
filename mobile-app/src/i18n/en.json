@@ -1,0 +1,119 @@
+{
+  "common": {
+    "appName": "Plant Disease Detection",
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "save": "Save",
+    "done": "Done",
+    "goBack": "Go Back",
+    "noData": "No data available"
+  },
+  "auth": {
+    "welcomeBack": "Welcome Back",
+    "createAccount": "Create Account",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full Name",
+    "phoneNumber": "Phone Number",
+    "login": "Login",
+    "signUp": "Sign Up",
+    "noAccount": "Don't have an account? Sign up",
+    "hasAccount": "Already have an account? Login",
+    "fillAllFields": "Please fill in all fields.",
+    "fillBothFields": "Please fill in both fields.",
+    "loginFailed": "Login failed. Please verify credentials.",
+    "registrationFailed": "Registration failed. Please try again."
+  },
+  "home": {
+    "greeting": "Welcome back,",
+    "title": "Let's check your crops",
+    "takePhoto": "Take a Photo",
+    "cameraSubtitle": "Use camera to diagnose",
+    "uploadGallery": "Upload Gallery",
+    "gallerySubtitle": "Select from your photos",
+    "dailyTip": "Daily Tip",
+    "tipText": "Ensure to water your crops early morning to prevent evaporation.",
+    "highRisk": "HIGH RISK",
+    "mediumRisk": "MEDIUM RISK",
+    "lowRisk": "LOW RISK"
+  },
+  "camera": {
+    "title": "Take Photo",
+    "noAccess": "We need your permission to use the camera",
+    "grantPermission": "Grant Permission",
+    "uploadFailed": "Failed to upload image. Please try again.",
+    "captureFailed": "Failed to capture photo."
+  },
+  "gallery": {
+    "title": "Upload from Gallery",
+    "noImage": "No image selected",
+    "selectPhoto": "Select Photo",
+    "changePhoto": "Change Photo",
+    "analyzeCrop": "Analyze Crop",
+    "saveForLater": "Save for Later",
+    "offlineBanner": "📡 Offline — predictions will be queued",
+    "uploadFailed": "Failed to analyze crop. Please check connection and try again.",
+    "savedOffline": "Saved Offline",
+    "savedOfflineMsg": "No internet connection. Your prediction has been saved and will sync automatically when you reconnect."
+  },
+  "result": {
+    "title": "Analysis Result",
+    "healthyCrop": "Healthy Crop",
+    "diseaseDetected": "Disease Detected",
+    "confidence": "Confidence",
+    "cropIdentified": "Crop Identified",
+    "diseaseType": "Disease Type",
+    "description": "Description",
+    "treatmentAdvice": "Treatment Advice",
+    "noData": "No prediction data found."
+  },
+  "history": {
+    "title": "Prediction History",
+    "searchPlaceholder": "Search by crop name...",
+    "filter": "Filter",
+    "noPredictions": "No predictions yet.",
+    "firstDiagnosis": "Take a photo to get your first diagnosis!",
+    "healthy": "Healthy",
+    "diseased": "Diseased"
+  },
+  "profile": {
+    "title": "My Profile",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "logOut": "Log Out",
+    "adminDashboard": "Admin Dashboard"
+  },
+  "settings": {
+    "title": "Settings",
+    "pushNotifications": "Push Notifications",
+    "offlineMode": "Offline Mode",
+    "language": "Language",
+    "about": "About App",
+    "helpSupport": "Help & Support",
+    "version": "Plant Disease Detection v1.0",
+    "gradProject": "Graduation Project — 2026"
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "totalUsers": "Total Users",
+    "totalScans": "Total Scans",
+    "diseasesFound": "Diseases Found",
+    "healthyCrops": "Healthy Crops",
+    "recentPredictions": "Recent Predictions",
+    "noPredictions": "No predictions recorded yet."
+  },
+  "weather": {
+    "highRiskMsg": "High humidity & warm temps increase fungal disease risk. Inspect crops closely.",
+    "mediumRiskMsg": "Moderate conditions. Monitor your crops for early signs of disease.",
+    "lowRiskMsg": "Current weather conditions are favorable for healthy crops.",
+    "unavailable": "Weather data unavailable"
+  },
+  "sync": {
+    "syncComplete": "Sync Complete",
+    "syncMessage": "{count} offline prediction(s) synced successfully!"
+  }
+}

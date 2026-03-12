@@ -1,0 +1,119 @@
+{
+  "common": {
+    "appName": "كشف أمراض النباتات",
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "retry": "إعادة المحاولة",
+    "cancel": "إلغاء",
+    "ok": "حسناً",
+    "save": "حفظ",
+    "done": "تم",
+    "goBack": "رجوع",
+    "noData": "لا توجد بيانات"
+  },
+  "auth": {
+    "welcomeBack": "مرحباً بعودتك",
+    "createAccount": "إنشاء حساب",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "fullName": "الاسم الكامل",
+    "phoneNumber": "رقم الهاتف",
+    "login": "تسجيل الدخول",
+    "signUp": "إنشاء حساب",
+    "noAccount": "ليس لديك حساب؟ سجل الآن",
+    "hasAccount": "لديك حساب بالفعل؟ تسجيل الدخول",
+    "fillAllFields": "يرجى ملء جميع الحقول.",
+    "fillBothFields": "يرجى ملء كلا الحقلين.",
+    "loginFailed": "فشل تسجيل الدخول. يرجى التحقق من بياناتك.",
+    "registrationFailed": "فشل التسجيل. يرجى المحاولة مرة أخرى."
+  },
+  "home": {
+    "greeting": "مرحباً بعودتك،",
+    "title": "دعنا نفحص محاصيلك",
+    "takePhoto": "التقط صورة",
+    "cameraSubtitle": "استخدم الكاميرا للتشخيص",
+    "uploadGallery": "رفع من المعرض",
+    "gallerySubtitle": "اختر من صورك",
+    "dailyTip": "نصيحة اليوم",
+    "tipText": "تأكد من ري محاصيلك في الصباح الباكر لمنع التبخر.",
+    "highRisk": "خطر عالي",
+    "mediumRisk": "خطر متوسط",
+    "lowRisk": "خطر منخفض"
+  },
+  "camera": {
+    "title": "التقاط صورة",
+    "noAccess": "نحتاج إذنك لاستخدام الكاميرا",
+    "grantPermission": "منح الإذن",
+    "uploadFailed": "فشل رفع الصورة. يرجى المحاولة مرة أخرى.",
+    "captureFailed": "فشل التقاط الصورة."
+  },
+  "gallery": {
+    "title": "رفع من المعرض",
+    "noImage": "لم يتم اختيار صورة",
+    "selectPhoto": "اختر صورة",
+    "changePhoto": "تغيير الصورة",
+    "analyzeCrop": "تحليل المحصول",
+    "saveForLater": "حفظ لاحقاً",
+    "offlineBanner": "📡 غير متصل — سيتم حفظ التنبؤات",
+    "uploadFailed": "فشل تحليل المحصول. يرجى التحقق من الاتصال والمحاولة مرة أخرى.",
+    "savedOffline": "تم الحفظ",
+    "savedOfflineMsg": "لا يوجد اتصال بالإنترنت. تم حفظ التنبؤ وستتم المزامنة تلقائياً عند استعادة الاتصال."
+  },
+  "result": {
+    "title": "نتيجة التحليل",
+    "healthyCrop": "محصول سليم",
+    "diseaseDetected": "تم اكتشاف مرض",
+    "confidence": "نسبة الثقة",
+    "cropIdentified": "المحصول المحدد",
+    "diseaseType": "نوع المرض",
+    "description": "الوصف",
+    "treatmentAdvice": "نصيحة العلاج",
+    "noData": "لا توجد بيانات تنبؤ."
+  },
+  "history": {
+    "title": "سجل التنبؤات",
+    "searchPlaceholder": "البحث حسب اسم المحصول...",
+    "filter": "تصفية",
+    "noPredictions": "لا توجد تنبؤات بعد.",
+    "firstDiagnosis": "التقط صورة للحصول على أول تشخيص!",
+    "healthy": "سليم",
+    "diseased": "مريض"
+  },
+  "profile": {
+    "title": "ملفي الشخصي",
+    "name": "الاسم",
+    "email": "البريد الإلكتروني",
+    "phone": "الهاتف",
+    "logOut": "تسجيل الخروج",
+    "adminDashboard": "لوحة الإدارة"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "pushNotifications": "الإشعارات",
+    "offlineMode": "وضع عدم الاتصال",
+    "language": "اللغة",
+    "about": "حول التطبيق",
+    "helpSupport": "المساعدة والدعم",
+    "version": "كشف أمراض النباتات الإصدار 1.0",
+    "gradProject": "مشروع التخرج — 2026"
+  },
+  "admin": {
+    "title": "لوحة الإدارة",
+    "totalUsers": "إجمالي المستخدمين",
+    "totalScans": "إجمالي الفحوصات",
+    "diseasesFound": "الأمراض المكتشفة",
+    "healthyCrops": "المحاصيل السليمة",
+    "recentPredictions": "التنبؤات الأخيرة",
+    "noPredictions": "لا توجد تنبؤات مسجلة بعد."
+  },
+  "weather": {
+    "highRiskMsg": "الرطوبة العالية والحرارة الدافئة تزيد من خطر الأمراض الفطرية. افحص محاصيلك بعناية.",
+    "mediumRiskMsg": "ظروف معتدلة. راقب محاصيلك للكشف المبكر عن الأمراض.",
+    "lowRiskMsg": "الظروف الجوية الحالية ملائمة لصحة المحاصيل.",
+    "unavailable": "بيانات الطقس غير متوفرة"
+  },
+  "sync": {
+    "syncComplete": "اكتملت المزامنة",
+    "syncMessage": "تمت مزامنة {count} تنبؤ(ات) بنجاح!"
+  }
+}
