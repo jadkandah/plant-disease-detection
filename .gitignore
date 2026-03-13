@@ -14,6 +14,9 @@ __pycache__/
 *.pyd
 *.so
 
+data_raw/
+jordan_dataset2/
+
 ############################################
 # JUPYTER NOTEBOOKS
 ############################################
@@ -59,7 +62,12 @@ out/
 data/
 datasets/
 data_raw/
+<<<<<<< HEAD
 src/dissdetector/project_model_resnet_iou.py
+=======
+jordan_dataset2/
+src/dissdetector/project_model_resnet_iou.py\
+>>>>>>> f8bca0f (ss)
 
 ############################################
 # DOCUMENTATION BUILD OUTPUT
@@ -87,3 +95,7 @@ tempCodeRunnerFile.*
 *.tmp
 *.bak
 *.swp
+<<<<<<< HEAD
+=======
+
+>>>>>>> f8bca0f (ss)

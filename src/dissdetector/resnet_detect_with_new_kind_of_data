@@ -23,9 +23,11 @@ from albumentations.pytorch import ToTensorV2
 # =========================
 # Configuration
 # =========================
-ROOT = Path("/home/jad/plant-disease-detection/plant-disease-detection")
-DATASET_PATH = ROOT / "jordan_dataset" / "images"   # must contain train/val/test
-METADATA_CSV = ROOT / "jordan_dataset" / "metadata_weather.csv"
+
+
+ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
+DATASET_PATH = ROOT / "jordan_dataset2"   # contains train / val / test
+METADATA_CSV = ROOT / "jordan_dataset2" / "metadata_weather.csv"
 
 BATCH_SIZE = 8
 NUM_EPOCHS = 5
