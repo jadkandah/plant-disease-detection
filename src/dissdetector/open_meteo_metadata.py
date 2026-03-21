@@ -10,8 +10,10 @@ from tqdm import tqdm
 # =========================
 # Configuration
 # =========================
-ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
-DATASET_PATH = ROOT / "jordan_dataset2"
+
+#ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
+DATASET_PATH = Path("/Users/sanadmadani/Desktop/plant-disease-detection/jordan_dataset2")
+#DATASET_PATH = ROOT / "jordan_dataset2"
 OUTPUT_CSV = DATASET_PATH / "metadata_weather.csv"
 
 LATITUDE = 31.9539
@@ -70,7 +72,10 @@ CLASS_NAME_MAP = {
     "Grape___Esca_(Black_Measles)": ("Grape", "Esca_Black_Measles"),
     "Grape___healthy": ("Grape", "healthy"),
     "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": ("Grape", "Leaf_blight_Isariopsis_Leaf_Spot"),
+    "Orange___healthy": ("Orange", "healthy"),
     "Orange___Haunglongbing_(Citrus_greening)": ("Orange", "Citrus_greening"),
+    "Orange___Canker": ("Orange", "Canker"),
+    "Orange___Black_spot": ("Orange", "Black_spot"),
     "Peach___Bacterial_spot": ("Peach", "Bacterial_spot"),
     "Peach___healthy": ("Peach", "healthy"),
     "Potato___Early_blight": ("Potato", "Early_blight"),

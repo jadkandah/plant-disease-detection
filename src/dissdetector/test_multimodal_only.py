@@ -1,3 +1,8 @@
+'''
+MultiModalResNet50 not so efficent but were keeping it just incase
+the other file is overfitting
+working fine not the best model
+'''
 import os
 from pathlib import Path
 
