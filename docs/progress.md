@@ -231,3 +231,22 @@ Top OFFLINE ranking:
     6          mobilenet_v3_large_224 mobilenet_v3_large  0.686785   0.265718       4259677.0      16.449530       0.073020
 
 ####
+23 Mar
+Ran resnet50_multimodal with full data and generated weather data that was used to pull temp, humididty, soil temp, soil humidity
+with the following setup:
+
+BATCH_SIZE = 2
+NUM_EPOCHS = 20
+LEARNING_RATE = 1e-3
+IMAGE_SIZE = 512
+PATIENCE = 5
+SEED = 42
+
+resulting in the following:
+
+Test Loss: 1.9609
+Test Accuracy: 0.6846 (on 8551 samples)
+Test mIoU: 0.4057
+
+Next we will rerun the prevoius models without the weather meta data using the full dataset to see which results give better predictions.
+####

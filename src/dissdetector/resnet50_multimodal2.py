@@ -27,7 +27,7 @@ from albumentations.pytorch import ToTensorV2
 # =========================
 #ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
 ROOT = Path("/home/jad/plant-disease-detection/")
-DATASET_PATH = ROOT / "jordan_dataset" # Changed from jordan_dataset2
+DATASET_PATH = ROOT / "jordan_dataset"  # Changed from jordan_dataset2
 METADATA_CSV = DATASET_PATH / "metadata_weather.csv"
 
 BATCH_SIZE = 2
@@ -380,6 +380,7 @@ def load_data(base_dir, metadata_csv):
             pin_memory=(DEVICE.type == "cuda"),
             persistent_workers=False,
             collate_fn=safe_collate,
+            drop_last=(split == "train"),
         )
 
     dataset_sizes = {split: len(datasets[split]) for split in datasets}
@@ -464,6 +465,11 @@ def run_epoch(model, dataloader, criterion, optimizer=None, num_classes=1):
 
     for images, features, labels in tqdm(dataloader, desc="train" if is_train else "eval"):
         if images.numel() == 0:
+            continue
+
+        # Skip undersized train batches that can happen after safe_collate removes bad samples.
+        # BatchNorm1d in feature_mlp requires more than 1 sample during training.
+        if is_train and images.size(0) < 2:
             continue
 
         images = images.to(DEVICE)
