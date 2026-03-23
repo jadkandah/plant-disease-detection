@@ -25,14 +25,15 @@ from albumentations.pytorch import ToTensorV2
 # =========================
 # Configuration
 # =========================
-ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
-DATASET_PATH = ROOT / "jordan_dataset2"
+#ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
+ROOT = Path("/home/jad/plant-disease-detection/")
+DATASET_PATH = ROOT / "jordan_dataset" # Changed from jordan_dataset2
 METADATA_CSV = DATASET_PATH / "metadata_weather.csv"
 
-BATCH_SIZE = 8
+BATCH_SIZE = 2
 NUM_EPOCHS = 20
 LEARNING_RATE = 1e-3
-IMAGE_SIZE = 384
+IMAGE_SIZE = 512
 PATIENCE = 5
 SEED = 42
 

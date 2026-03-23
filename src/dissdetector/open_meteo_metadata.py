@@ -12,7 +12,7 @@ from tqdm import tqdm
 # =========================
 
 #ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
-DATASET_PATH = Path("/Users/sanadmadani/Desktop/plant-disease-detection/jordan_dataset2")
+DATASET_PATH = Path("/home/jad/plant-disease-detection/jordan_dataset")
 #DATASET_PATH = ROOT / "jordan_dataset2"
 OUTPUT_CSV = DATASET_PATH / "metadata_weather.csv"
 
@@ -22,6 +22,7 @@ TIMEZONE = "Asia/Amman"
 
 YEAR_START = 2023
 YEAR_END = 2025
+RANDOM_SEED = 42
 
 FEATURE_COLS = [
     "temp_c",
@@ -32,6 +33,8 @@ FEATURE_COLS = [
 ]
 
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
+
+random.seed(RANDOM_SEED)
 
 # =========================
 # Map your raw class names
@@ -52,6 +55,7 @@ CLASS_NAME_MAP = {
     "Cauliflower_Black_Rot": ("Cauliflower", "Black_Rot"),
     "Cauliflower_Downy_Mildew": ("Cauliflower", "Downy_Mildew"),
     "Cauliflower_Healthy": ("Cauliflower", "healthy"),
+
     "EggPlant_Healthy_Leaf": ("Eggplant", "healthy"),
     "EggPlant_Insect_Pest_Disease": ("Eggplant", "Insect_Pest_Disease"),
     "EggPlant_Leaf_Spot_Disease": ("Eggplant", "Leaf_Spot_Disease"),
@@ -64,23 +68,29 @@ CLASS_NAME_MAP = {
     "Apple___Black_rot": ("Apple", "Black_rot"),
     "Apple___Cedar_apple_rust": ("Apple", "Cedar_apple_rust"),
     "Apple___healthy": ("Apple", "healthy"),
+
     "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot": ("Maize", "Cercospora_leaf_spot_Gray_leaf_spot"),
     "Corn_(maize)___Common_rust_": ("Maize", "Common_rust"),
     "Corn_(maize)___healthy": ("Maize", "healthy"),
     "Corn_(maize)___Northern_Leaf_Blight": ("Maize", "Northern_Leaf_Blight"),
+
     "Grape___Black_rot": ("Grape", "Black_rot"),
     "Grape___Esca_(Black_Measles)": ("Grape", "Esca_Black_Measles"),
     "Grape___healthy": ("Grape", "healthy"),
     "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": ("Grape", "Leaf_blight_Isariopsis_Leaf_Spot"),
+    
     "Orange___healthy": ("Orange", "healthy"),
     "Orange___Haunglongbing_(Citrus_greening)": ("Orange", "Citrus_greening"),
     "Orange___Canker": ("Orange", "Canker"),
     "Orange___Black_spot": ("Orange", "Black_spot"),
+    
     "Peach___Bacterial_spot": ("Peach", "Bacterial_spot"),
     "Peach___healthy": ("Peach", "healthy"),
+
     "Potato___Early_blight": ("Potato", "Early_blight"),
     "Potato___healthy": ("Potato", "healthy"),
     "Potato___Late_blight": ("Potato", "Late_blight"),
+
     "Tomato___Bacterial_spot": ("Tomato", "Bacterial_spot"),
     "Tomato___Early_blight": ("Tomato", "Early_blight"),
     "Tomato___healthy": ("Tomato", "healthy"),
@@ -124,6 +134,7 @@ PROFILE_MONTHS = {
 # =========================
 def list_images(base_dir: Path):
     image_paths = []
+
     for split in ["train", "val", "test"]:
         split_dir = base_dir / split
         if not split_dir.is_dir():
@@ -140,28 +151,38 @@ def list_images(base_dir: Path):
 
 
 def normalize_label_from_rel_path(rel_path: str):
+    """
+    Expected common structure:
+        train/ClassName/image.jpg
+        val/ClassName/image.jpg
+        test/ClassName/image.jpg
+
+    If there are deeper nested folders, the class folder is assumed to be parts[1].
+    """
     parts = rel_path.split("/")
-    if len(parts) < 4:
+
+    if len(parts) < 3:
         return None, None, None
 
-    split_name, parent, leaf = parts[0], parts[1], parts[2]
+    split_name = parts[0]
+    class_name = parts[1]
 
-    if leaf in CLASS_NAME_MAP:
-        crop, disease = CLASS_NAME_MAP[leaf]
+    if class_name in CLASS_NAME_MAP:
+        crop, disease = CLASS_NAME_MAP[class_name]
         return split_name, crop, disease
 
-    if parent in CLASS_NAME_MAP:
-        crop, disease = CLASS_NAME_MAP[parent]
+    if "___" in class_name:
+        crop, disease = class_name.split("___", 1)
         return split_name, crop, disease
 
-    if "___" in leaf:
-        crop, disease = leaf.split("___", 1)
-        return split_name, crop, disease
-
-    return split_name, parent, leaf
+    # Fallback: try simple normalization
+    return split_name, class_name, class_name
 
 
 def disease_to_months(disease_name: str):
+    if not disease_name:
+        return PROFILE_MONTHS["default"]
+
     d = disease_name.lower().replace("-", "_").replace(" ", "_")
 
     if "healthy" in d:
@@ -199,7 +220,7 @@ def choose_realistic_datetime(disease_name: str):
     year = random.randint(YEAR_START, YEAR_END)
     month = random.choice(months)
     day = random.randint(1, 28)
-    hour = random.randint(6, 17)   # daytime images usually make more sense
+    hour = random.randint(6, 17)  # daytime hours
     return datetime(year, month, day, hour, 0, 0)
 
 
@@ -216,6 +237,7 @@ def fetch_hourly_weather_for_day(lat, lon, day_str, timezone):
         "precipitation_unit": "mm",
         "timezone": timezone,
     }
+
     response = requests.get(url, params=params, timeout=30)
     response.raise_for_status()
     return response.json()
@@ -223,6 +245,7 @@ def fetch_hourly_weather_for_day(lat, lon, day_str, timezone):
 
 def build_hourly_lookup(api_json):
     hourly = api_json.get("hourly", {})
+
     times = hourly.get("time", [])
     temp = hourly.get("temperature_2m", [])
     humidity = hourly.get("relative_humidity_2m", [])
@@ -231,6 +254,7 @@ def build_hourly_lookup(api_json):
     soil = hourly.get("soil_moisture_0_to_7cm", [])
 
     lookup = {}
+
     for i, t in enumerate(times):
         lookup[t] = {
             "temp_c": temp[i] if i < len(temp) else None,
@@ -239,18 +263,46 @@ def build_hourly_lookup(api_json):
             "precip_mm": precip[i] if i < len(precip) else None,
             "soil_moisture_pct": soil[i] * 100.0 if i < len(soil) and soil[i] is not None else None,
         }
+
     return lookup
 
 
 def fallback_weather_from_month(month):
     # only used if API fails for a row
     if month in [12, 1, 2]:
-        return {"temp_c": 12, "humidity_pct": 75, "wind_m_s": 2.2, "precip_mm": 0.8, "soil_moisture_pct": 30}
+        return {
+            "temp_c": 12,
+            "humidity_pct": 75,
+            "wind_m_s": 2.2,
+            "precip_mm": 0.8,
+            "soil_moisture_pct": 30,
+        }
+
     if month in [3, 4, 5]:
-        return {"temp_c": 21, "humidity_pct": 60, "wind_m_s": 2.0, "precip_mm": 0.2, "soil_moisture_pct": 22}
+        return {
+            "temp_c": 21,
+            "humidity_pct": 60,
+            "wind_m_s": 2.0,
+            "precip_mm": 0.2,
+            "soil_moisture_pct": 22,
+        }
+
     if month in [6, 7, 8]:
-        return {"temp_c": 31, "humidity_pct": 35, "wind_m_s": 2.5, "precip_mm": 0.0, "soil_moisture_pct": 14}
-    return {"temp_c": 24, "humidity_pct": 50, "wind_m_s": 2.1, "precip_mm": 0.0, "soil_moisture_pct": 18}
+        return {
+            "temp_c": 31,
+            "humidity_pct": 35,
+            "wind_m_s": 2.5,
+            "precip_mm": 0.0,
+            "soil_moisture_pct": 14,
+        }
+
+    return {
+        "temp_c": 24,
+        "humidity_pct": 50,
+        "wind_m_s": 2.1,
+        "precip_mm": 0.0,
+        "soil_moisture_pct": 18,
+    }
 
 
 # =========================
@@ -266,23 +318,40 @@ def generate_metadata():
 
     print(f"Found {len(image_rel_paths)} images.")
 
+    # Quick sanity check
+    print("\nSample path parsing:")
+    for rel_path in image_rel_paths[:10]:
+        print(f"{rel_path} -> {normalize_label_from_rel_path(rel_path)}")
+
     image_datetimes = {}
     unique_days = set()
+    parse_failures = 0
 
     for rel_path in image_rel_paths:
-        _, crop, disease = normalize_label_from_rel_path(rel_path)
-        disease = disease if disease is not None else "default"
+        split_name, crop, disease = normalize_label_from_rel_path(rel_path)
+
+        if crop is None or disease is None:
+            parse_failures += 1
+            crop = "Unknown"
+            disease = "default"
+
         dt = choose_realistic_datetime(disease)
+
         image_datetimes[rel_path] = {
+            "split": split_name,
             "crop": crop,
             "disease": disease,
             "dt": dt,
         }
+
         unique_days.add(dt.strftime("%Y-%m-%d"))
 
-    print(f"Need API calls for {len(unique_days)} unique days.")
+    print(f"\nNeed API calls for {len(unique_days)} unique days.")
+    print(f"Label parse failures: {parse_failures}")
 
     daily_cache = {}
+    failed_days = 0
+
     for day_str in tqdm(sorted(unique_days), desc="Fetching Open-Meteo weather"):
         try:
             api_json = fetch_hourly_weather_for_day(LATITUDE, LONGITUDE, day_str, TIMEZONE)
@@ -290,6 +359,7 @@ def generate_metadata():
         except Exception as e:
             print(f"Failed API fetch for {day_str}: {e}")
             daily_cache[day_str] = {}
+            failed_days += 1
 
     rows = []
     api_missing = 0
@@ -297,10 +367,12 @@ def generate_metadata():
     for rel_path in tqdm(image_rel_paths, desc="Building CSV"):
         info = image_datetimes[rel_path]
         dt = info["dt"]
+
         day_str = dt.strftime("%Y-%m-%d")
         hour_key = dt.strftime("%Y-%m-%dT%H:00")
 
         weather = daily_cache.get(day_str, {}).get(hour_key)
+
         if weather is None:
             api_missing += 1
             weather = fallback_weather_from_month(dt.month)
@@ -325,8 +397,13 @@ def generate_metadata():
     df.to_csv(OUTPUT_CSV, index=False)
 
     print(f"\nSaved CSV to: {OUTPUT_CSV}")
+    print(f"Failed API day fetches: {failed_days}")
     print(f"Rows where exact API hour was missing and fallback was used: {api_missing}")
+    print("\nHead of CSV:")
     print(df.head())
+
+    print("\nClass distribution sample:")
+    print(df[["crop_name", "disease_name"]].value_counts().head(20))
 
 
 if __name__ == "__main__":

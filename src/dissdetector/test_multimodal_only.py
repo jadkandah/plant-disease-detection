@@ -24,16 +24,16 @@ from albumentations.pytorch import ToTensorV2
 # =========================
 # Configuration
 # =========================
-ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
-DATASET_PATH = ROOT / "jordan_dataset2"
+ROOT = Path("/home/jad/plant-disease-detection/")
+DATASET_PATH = ROOT / "jordan_dataset"
 METADATA_CSV = DATASET_PATH / "metadata_weather.csv"
 from pathlib import Path
 
-MODEL_PATH = ROOT / "src" / "dissdetector" / "resnet_50_plant_disease.pth"
+MODEL_PATH = ROOT / "src" / "dissdetector" / "resnet50_multimodal_plant_disease_improved.pth"
 print("MODEL_PATH =", MODEL_PATH)
 print("Exists?", MODEL_PATH.exists())
 BATCH_SIZE = 8
-IMAGE_SIZE = 384
+IMAGE_SIZE = 512
 
 DEVICE = torch.device(
     "cuda:0" if torch.cuda.is_available()

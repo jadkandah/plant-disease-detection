@@ -15,14 +15,14 @@ from io import BytesIO
 # ──────────────────────────────────────────────
 # Model configuration (must match training script exactly)
 # ──────────────────────────────────────────────
-IMAGE_SIZE = 384
+IMAGE_SIZE = 512
 NORM_MEAN = [0.485, 0.456, 0.406]
 NORM_STD  = [0.229, 0.224, 0.225]
 
 # Path to the trained .pth weights
 MODEL_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "src", "dissdetector", "resnet_50_plant_disease.pth"
+    "src", "dissdetector", "resnet50_multimodal_plant_disease_improved.pth"
 )
 
 # ──────────────────────────────────────────────
