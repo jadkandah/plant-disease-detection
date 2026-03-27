@@ -1,410 +1,732 @@
-import json
-import os
-import random
-import glob
-import shutil
-from datetime import datetime
+# =========================================================
+# Improved Multimodal ResNet50 for Plant Disease Detection
+# Image + Weather/Soil CSV Features
+# =========================================================
 
-import cv2
-import numpy as np
-from tqdm import tqdm
+import os
+import sys
+import time
+import copy
+import random
+from pathlib import Path
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data._utils.collate import default_collate
+import torchvision.models as models
+
+import numpy as np
+import pandas as pd
+from PIL import Image, UnidentifiedImageError
+import cv2
+from tqdm import tqdm
 
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-import segmentation_models_pytorch as smp
-from pycocotools.coco import COCO
 
 
 # =========================
-# CONFIG
+# Configuration
 # =========================
+ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
+DATASET_PATH = ROOT / "jordan_dataset2"
+METADATA_CSV = DATASET_PATH / "metadata_weather.csv"
+
+BATCH_SIZE = 8
+NUM_EPOCHS = 20
+IMAGE_SIZE = 384
+PATIENCE = 6
 SEED = 42
 
-COCO_ANNOTATIONS = r"C:\Users\User\OneDrive\Desktop\waste final\result.json"
-IMAGE_DIR        = r"C:\Users\User\OneDrive\Desktop\waste final\images"
+# phase switch: after this epoch, unfreeze layer3 too
+UNFREEZE_EPOCH = 4
 
-MASK_DIR     = r"C:\Users\User\OneDrive\Desktop\Traning2\masks"
-DATASET_ROOT = r"C:\Users\User\OneDrive\Desktop\Traning2\dataset"
-TILED_ROOT   = r"C:\Users\User\OneDrive\Desktop\Traning2\tiled_dataset"
-CHECKPOINTS  = r"C:\Users\User\OneDrive\Desktop\Traning2\checkpoints_stable_v2"
+MODEL_OUTPUT_PATH = ROOT / "src" / "dissdetector" / "resnet50_multimodal_plant_disease_best.pth"
 
-# Tiling
-TILE_SIZE = 512
-KEEP_EMPTY_RATIO_TRAIN = 0.20
-KEEP_EMPTY_RATIO_VAL   = 1.00
+DEVICE = torch.device(
+    "cuda:0" if torch.cuda.is_available()
+    else "mps" if torch.backends.mps.is_available()
+    else "cpu"
+)
+print(f"Using device: {DEVICE}")
 
-# Training
-BATCH_SIZE = 6
-EPOCHS = 60
-LR_FROZEN = 1e-4        # decoder-only
-LR_UNFROZEN = 3e-5      # after unfreezing encoder
-FREEZE_EPOCHS = 4
-EARLY_STOP = 10
-
-# DataLoader (Windows-safe)
-NUM_WORKERS = 0
-PIN_MEMORY = torch.cuda.is_available()
-
-# Prefer GPU; fail with clear message if GPU requested but unavailable
-USE_GPU = True
-if USE_GPU and torch.cuda.is_available():
-    DEVICE = torch.device("cuda")
-    print("Using device: CUDA (GPU)")
-elif USE_GPU and not torch.cuda.is_available():
-    raise RuntimeError(
-        "GPU requested but CUDA is not available. "
-        "Install PyTorch with CUDA: https://pytorch.org/get-started/locally/ "
-        "(e.g. pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118)"
-    )
-else:
-    DEVICE = torch.device("cpu")
-    print("Using device: CPU")
+if DEVICE.type == "cuda":
+    torch.backends.cudnn.benchmark = True
 
 
 # =========================
 # Seed
 # =========================
-def set_seed(seed):
+def seed_everything(seed=42):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
-set_seed(SEED)
+seed_everything(SEED)
 
 
 # =========================
-# Build multi-class masks (only if you need it)
+# Weather / soil feature columns
 # =========================
-def build_masks():
-    coco = COCO(COCO_ANNOTATIONS)
-    cat_ids = sorted(coco.getCatIds())
-    cat_map = {cid: i+1 for i, cid in enumerate(cat_ids)}
-    os.makedirs(MASK_DIR, exist_ok=True)
+FEATURE_COLS = [
+    "temp_c",
+    "humidity_pct",
+    "wind_m_s",
+    "precip_mm",
+    "soil_moisture_pct",
+]
 
-    for img_id in tqdm(coco.getImgIds(), desc="Building masks"):
-        info = coco.loadImgs(img_id)[0]
-        fname = os.path.basename(info["file_name"])
-        img = cv2.imread(os.path.join(IMAGE_DIR, fname))
-        if img is None:
+
+# =========================
+# Transforms
+# =========================
+NORM_MEAN = [0.485, 0.456, 0.406]
+NORM_STD = [0.229, 0.224, 0.225]
+
+train_transforms = A.Compose([
+    A.RandomResizedCrop(
+        size=(IMAGE_SIZE, IMAGE_SIZE),
+        scale=(0.90, 1.0),
+        ratio=(0.95, 1.05),
+        p=1.0
+    ),
+    A.HorizontalFlip(p=0.5),
+    A.Affine(
+        translate_percent=0.03,
+        scale=(0.97, 1.03),
+        rotate=10,
+        p=0.4,
+        border_mode=cv2.BORDER_CONSTANT
+    ),
+    A.RandomBrightnessContrast(p=0.2),
+    A.Normalize(mean=NORM_MEAN, std=NORM_STD),
+    ToTensorV2(),
+])
+
+val_test_transforms = A.Compose([
+    A.Resize(IMAGE_SIZE, IMAGE_SIZE),
+    A.CenterCrop(IMAGE_SIZE, IMAGE_SIZE, p=1.0),
+    A.Normalize(mean=NORM_MEAN, std=NORM_STD),
+    ToTensorV2(),
+])
+
+IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
+
+
+# =========================
+# Helpers
+# =========================
+def list_leaf_classes(split_dir):
+    classes = set()
+    for parent in sorted(os.listdir(split_dir)):
+        parent_path = split_dir / parent
+        if not parent_path.is_dir():
             continue
-
-        h, w = img.shape[:2]
-        mask = np.zeros((h, w), dtype=np.uint8)
-
-        anns = coco.loadAnns(coco.getAnnIds(imgIds=img_id))
-        for ann in anns:
-            cls = cat_map[ann["category_id"]]
-            m = coco.annToMask(ann)
-            mask[m == 1] = cls
-
-        cv2.imwrite(os.path.join(MASK_DIR, os.path.splitext(fname)[0] + ".png"), mask)
+        for leaf in sorted(os.listdir(parent_path)):
+            leaf_path = split_dir / parent / leaf
+            if leaf_path.is_dir():
+                classes.add(f"{parent}___{leaf}")
+    return classes
 
 
-# =========================
-# Tiling
-# =========================
-def tile_split(img_dir, mask_dir, out_dir, tile_size=512, keep_empty_ratio=0.2):
-    os.makedirs(os.path.join(out_dir, "images"), exist_ok=True)
-    os.makedirs(os.path.join(out_dir, "masks"), exist_ok=True)
+def build_shared_mapping(base_dir):
+    all_classes = set()
+    split_dirs = {}
+    for split in ["train", "val", "test"]:
+        sd = base_dir / split
+        if not sd.is_dir():
+            raise RuntimeError(f"Missing split directory: {sd}")
+        split_dirs[split] = sd
+        all_classes |= list_leaf_classes(sd)
 
-    files = [f for f in os.listdir(img_dir) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
+    classes = sorted(all_classes)
+    class_to_idx = {c: i for i, c in enumerate(classes)}
+    return split_dirs, classes, class_to_idx
 
-    kept = 0
-    skipped = 0
 
-    for fname in tqdm(files, desc=f"Tiling {os.path.basename(out_dir)}"):
-        img = cv2.imread(os.path.join(img_dir, fname))
-        mpath = os.path.join(mask_dir, os.path.splitext(fname)[0] + ".png")
-        mask = cv2.imread(mpath, cv2.IMREAD_GRAYSCALE)
+def load_metadata(csv_path):
+    if not csv_path.is_file():
+        raise RuntimeError(f"Metadata CSV not found: {csv_path}")
 
-        if img is None or mask is None:
-            continue
+    df = pd.read_csv(csv_path)
 
-        h, w = img.shape[:2]
-        pad_h = (tile_size - h % tile_size) % tile_size
-        pad_w = (tile_size - w % tile_size) % tile_size
+    required_cols = {"image_rel_path", *FEATURE_COLS}
+    missing = required_cols - set(df.columns)
+    if missing:
+        raise RuntimeError(f"Missing required metadata columns: {missing}")
 
-        if pad_h or pad_w:
-            img  = cv2.copyMakeBorder(img, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=(0,0,0))
-            mask = cv2.copyMakeBorder(mask, 0, pad_h, 0, pad_w, cv2.BORDER_CONSTANT, value=0)
+    for col in FEATURE_COLS:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        H, W = img.shape[:2]
-        stem = os.path.splitext(fname)[0]
+    df["image_rel_path"] = df["image_rel_path"].astype(str)
+    return df
 
-        for y in range(0, H, tile_size):
-            for x in range(0, W, tile_size):
-                img_t = img[y:y+tile_size, x:x+tile_size]
-                m_t   = mask[y:y+tile_size, x:x+tile_size]
 
-                waste_ratio = float(np.mean(m_t > 0))
+def compute_feature_stats(train_df):
+    means = train_df[FEATURE_COLS].mean()
+    stds = train_df[FEATURE_COLS].std()
+    stds = stds.fillna(1.0).replace(0, 1.0)
+    return means, stds
 
-                # keep all waste tiles, keep only some empty tiles
-                if waste_ratio == 0.0 and random.random() > keep_empty_ratio:
-                    skipped += 1
-                    continue
 
-                out_name = f"{stem}_{y}_{x}.png"
-                cv2.imwrite(os.path.join(out_dir, "images", out_name), img_t)
-                cv2.imwrite(os.path.join(out_dir, "masks",  out_name), m_t)
-                kept += 1
+def compute_class_weights_from_samples(samples, num_classes):
+    counts = np.zeros(num_classes, dtype=np.float64)
+    for _, _, cls_idx in samples:
+        counts[cls_idx] += 1.0
 
-    print(f"✅ {out_dir}: kept={kept}, skipped_empty={skipped}")
+    counts[counts == 0] = 1.0
+    weights = counts.sum() / (num_classes * counts)
+
+    # Clamp a bit to avoid extreme weights
+    weights = np.clip(weights, 0.3, 5.0)
+
+    return torch.tensor(weights, dtype=torch.float32)
+
+
+def update_confusion_matrix(conf_mat, labels, preds, num_classes):
+    labels = labels.detach().cpu().numpy()
+    preds = preds.detach().cpu().numpy()
+    for t, p in zip(labels, preds):
+        if 0 <= t < num_classes and 0 <= p < num_classes:
+            conf_mat[t, p] += 1
+    return conf_mat
+
+
+def compute_metrics_from_confusion(conf_mat):
+    total = conf_mat.sum()
+    correct = np.trace(conf_mat)
+    acc = (correct / total) if total > 0 else float("nan")
+
+    ious = []
+    f1s = []
+
+    for c in range(conf_mat.shape[0]):
+        tp = conf_mat[c, c]
+        fp = conf_mat[:, c].sum() - tp
+        fn = conf_mat[c, :].sum() - tp
+
+        denom_iou = tp + fp + fn
+        if denom_iou > 0:
+            ious.append(tp / denom_iou)
+
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+        f1s.append(f1)
+
+    miou = float(np.mean(ious)) if len(ious) > 0 else float("nan")
+    macro_f1 = float(np.mean(f1s)) if len(f1s) > 0 else float("nan")
+
+    return acc, miou, macro_f1
 
 
 # =========================
 # Dataset
 # =========================
-class SegDataset(Dataset):
-    def __init__(self, img_dir, mask_dir, transform):
-        self.img_dir = img_dir
-        self.mask_dir = mask_dir
+class MultiModalPlantDataset(Dataset):
+    def __init__(
+        self,
+        root_dir,
+        transform,
+        image_size,
+        split_name,
+        class_to_idx,
+        metadata_df,
+        feature_means,
+        feature_stds,
+        log_limit=50,
+    ):
+        self.root_dir = root_dir
         self.transform = transform
-        self.files = []
-        for f in os.listdir(img_dir):
-           m = cv2.imread(os.path.join(mask_dir, f), 0)
-           if m is None: 
-               continue
-           waste_ratio = np.mean(m > 0)
-           if waste_ratio > 0:
-               self.files.append(f)
-               if waste_ratio > 0.02:   # more than 2% waste pixels
-                   self.files.append(f)  # duplicate (oversample)
-                   self.files.append(f)  # duplicate again
+        self.image_size = image_size
+        self.split_name = split_name
+        self.class_to_idx = class_to_idx
+        self.feature_means = feature_means
+        self.feature_stds = feature_stds
+
+        self._bad_logged = set()
+        self._bad_count = 0
+        self._log_limit = log_limit
+
+        split_prefix = f"{split_name}/"
+        metadata_df = metadata_df[metadata_df["image_rel_path"].str.startswith(split_prefix)].copy()
+        self.meta_map = metadata_df.set_index("image_rel_path").to_dict(orient="index")
+
+        samples = []
+        for parent_name in sorted(os.listdir(self.root_dir)):
+            parent_path = self.root_dir / parent_name
+            if not parent_path.is_dir():
+                continue
+
+            for leaf_name in sorted(os.listdir(parent_path)):
+                leaf_path = parent_path / leaf_name
+                if not leaf_path.is_dir():
+                    continue
+
+                cls = f"{parent_name}___{leaf_name}"
+                if cls not in self.class_to_idx:
+                    continue
+                cls_idx = self.class_to_idx[cls]
+
+                for fname in os.listdir(leaf_path):
+                    fpath = leaf_path / fname
+                    if not (fpath.is_file() and fpath.suffix.lower() in IMG_EXTS):
+                        continue
+
+                    rel_path = f"{split_name}/{parent_name}/{leaf_name}/{fname}"
+                    if rel_path not in self.meta_map:
+                        continue
+
+                    samples.append((str(fpath), rel_path, cls_idx))
+
+        if len(samples) == 0:
+            raise RuntimeError(f"No valid multimodal samples found under: {self.root_dir}")
+
+        self.samples = samples
+        self.classes = sorted(self.class_to_idx.keys())
 
     def __len__(self):
-        return len(self.files)
+        return len(self.samples)
 
-    def __getitem__(self, idx):
-        fname = self.files[idx]
-        img = cv2.imread(os.path.join(self.img_dir, fname))
-        mask = cv2.imread(os.path.join(self.mask_dir, fname), cv2.IMREAD_GRAYSCALE)
+    def _log_bad(self, path, msg):
+        if self._bad_count < self._log_limit and path not in self._bad_logged:
+            print(f"[{self.split_name}] Skipping file due to {msg}: {path}")
+            self._bad_logged.add(path)
+            self._bad_count += 1
+        elif self._bad_count == self._log_limit:
+            print(f"[{self.split_name}] Further bad-file messages suppressed...")
+            self._bad_count += 1
 
-        if img is None or mask is None:
-            return self.__getitem__(random.randint(0, len(self.files) - 1))
+    def __getitem__(self, index):
+        path, rel_path, target = self.samples[index]
 
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        try:
+            img = Image.open(path)
+        except (UnidentifiedImageError, OSError) as e:
+            self._log_bad(path, f"read error ({e})")
+            return None
 
-        aug = self.transform(image=img, mask=mask)
-        return aug["image"], aug["mask"].long()
+        try:
+            img = img.convert("RGB")
+        except Exception as e:
+            self._log_bad(path, f"convert RGB error ({e})")
+            return None
+
+        img_np = np.array(img)
+
+        try:
+            out = self.transform(image=img_np)
+            img_tensor = out["image"].contiguous()
+        except Exception as e:
+            self._log_bad(path, f"transform error ({e})")
+            return None
+
+        if not (
+            img_tensor.ndim == 3
+            and img_tensor.shape[0] == 3
+            and img_tensor.shape[1] == self.image_size
+            and img_tensor.shape[2] == self.image_size
+        ):
+            self._log_bad(path, f"bad tensor shape {tuple(img_tensor.shape)}")
+            return None
+
+        row = self.meta_map[rel_path]
+        feat_vals = []
+
+        for col in FEATURE_COLS:
+            val = row.get(col, np.nan)
+            if pd.isna(val):
+                val = self.feature_means[col]
+
+            std = self.feature_stds[col]
+            if pd.isna(std) or std == 0:
+                std = 1.0
+
+            val = (val - self.feature_means[col]) / std
+            feat_vals.append(float(val))
+
+        feat_tensor = torch.tensor(feat_vals, dtype=torch.float32)
+
+        return img_tensor, feat_tensor, target
 
 
 # =========================
-# Weights (moderate, stable)
+# Safe collate
 # =========================
-def compute_weights(mask_dir, num_classes):
-    counts = np.zeros(num_classes)
-    for p in glob.glob(os.path.join(mask_dir, "*.png")):
-        m = cv2.imread(p, 0)
-        for c in range(num_classes):
-            counts[c] += np.sum(m == c)
-
-    counts = np.maximum(counts, 1)
-    freq = counts / counts.sum()
-
-    weights = 1.0 / (freq + 1e-6)
-    weights = weights / weights.mean()
-
-    # clamp to avoid extreme imbalance
-    weights = np.clip(weights, 0.2, 3.0)
-
-    print("Clipped weights:", weights)
-    return torch.tensor(weights, dtype=torch.float32)
+def safe_collate(batch):
+    batch = [b for b in batch if b is not None]
+    if len(batch) == 0:
+        return (
+            torch.empty(0, 3, IMAGE_SIZE, IMAGE_SIZE),
+            torch.empty(0, len(FEATURE_COLS)),
+            torch.empty(0, dtype=torch.long),
+        )
+    return default_collate(batch)
 
 
 # =========================
-# IoU metric (mean over classes 1..C-1)
+# Data loading
 # =========================
-@torch.no_grad()
-def mean_iou(logits, target, num_classes):
-    pred = torch.argmax(logits, dim=1)  # [B,H,W]
-    ious = []
+def load_data(base_dir, metadata_csv):
+    split_dirs, classes, class_to_idx = build_shared_mapping(base_dir)
 
-    for cls in range(1, num_classes):   # ignore background in score
-        pred_i = (pred == cls)
-        targ_i = (target == cls)
+    metadata_df = load_metadata(metadata_csv)
+    train_df = metadata_df[metadata_df["image_rel_path"].str.startswith("train/")].copy()
+    if len(train_df) == 0:
+        raise RuntimeError("No training metadata rows found in metadata CSV.")
 
-        inter = (pred_i & targ_i).sum().float()
-        union = (pred_i | targ_i).sum().float()
+    feature_means, feature_stds = compute_feature_stats(train_df)
 
-        if union > 0:
-            ious.append(inter / union)
+    datasets = {}
+    for split in ["train", "val", "test"]:
+        datasets[split] = MultiModalPlantDataset(
+            root_dir=split_dirs[split],
+            transform=train_transforms if split == "train" else val_test_transforms,
+            image_size=IMAGE_SIZE,
+            split_name=split,
+            class_to_idx=class_to_idx,
+            metadata_df=metadata_df,
+            feature_means=feature_means,
+            feature_stds=feature_stds,
+            log_limit=50,
+        )
 
-    if not ious:
-        return torch.tensor(0.0, device=logits.device)
-    return torch.mean(torch.stack(ious))
+    print("\n--- Shared Model Label Mapping (Text to Integer) ---")
+    print({c: class_to_idx[c] for c in sorted(class_to_idx)})
+    print("----------------------------------------------------")
+
+    dataloaders = {}
+    for split in ["train", "val", "test"]:
+        dataloaders[split] = DataLoader(
+            datasets[split],
+            batch_size=BATCH_SIZE,
+            shuffle=(split == "train"),
+            num_workers=0,
+            pin_memory=(DEVICE.type == "cuda"),
+            persistent_workers=False,
+            collate_fn=safe_collate,
+        )
+
+    dataset_sizes = {split: len(datasets[split]) for split in datasets}
+
+    print("\nDataset sizes:")
+    for split in ["train", "val", "test"]:
+        print(
+            f"  {split}: {dataset_sizes[split]} samples "
+            f"(~{(dataset_sizes[split] + BATCH_SIZE - 1)//BATCH_SIZE} batches @ batch_size={BATCH_SIZE})"
+        )
+
+    return dataloaders, datasets, dataset_sizes, class_to_idx
 
 
 # =========================
-# MAIN
+# Model
 # =========================
-if __name__ == "__main__":
+class MultiModalResNet50(nn.Module):
+    def __init__(self, num_classes, num_features):
+        super().__init__()
 
-    coco = COCO(COCO_ANNOTATIONS)
-    NUM_CLASSES = 1 + len(coco.getCatIds())
-    print("✅ NUM_CLASSES:", NUM_CLASSES)
+        backbone = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
 
-    # (Optional) If you still need to build masks:
-    # build_masks()
+        # Freeze everything first
+        for p in backbone.parameters():
+            p.requires_grad = False
 
-    # Tile train/val (this overwrites/extends your tiled folders)
-    tile_split(
-        os.path.join(DATASET_ROOT, "images", "train"),
-        os.path.join(DATASET_ROOT, "masks",  "train"),
-        os.path.join(TILED_ROOT, "train"),
-        tile_size=TILE_SIZE,
-        keep_empty_ratio=KEEP_EMPTY_RATIO_TRAIN
+        # Start with layer4 unfrozen
+        for p in backbone.layer4.parameters():
+            p.requires_grad = True
+
+        in_features = backbone.fc.in_features
+        backbone.fc = nn.Identity()
+        self.image_backbone = backbone
+
+        # Project image branch down so it doesn't overpower tabular branch
+        self.image_proj = nn.Sequential(
+            nn.Linear(in_features, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(0.30),
+
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(0.20),
+        )
+
+        # Tabular branch
+        self.feature_mlp = nn.Sequential(
+            nn.Linear(num_features, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Dropout(0.20),
+
+            nn.Linear(64, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Dropout(0.20),
+        )
+
+        # Fusion head
+        self.fusion = nn.Sequential(
+            nn.Linear(256 + 128, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(0.30),
+
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.25),
+
+            nn.Linear(128, num_classes),
+        )
+
+    def forward(self, images, features):
+        img_vec = self.image_backbone(images)
+        img_vec = self.image_proj(img_vec)
+
+        feat_vec = self.feature_mlp(features)
+
+        x = torch.cat([img_vec, feat_vec], dim=1)
+        return self.fusion(x)
+
+
+def load_model(num_classes):
+    model = MultiModalResNet50(
+        num_classes=num_classes,
+        num_features=len(FEATURE_COLS)
     )
-    tile_split(
-        os.path.join(DATASET_ROOT, "images", "val"),
-        os.path.join(DATASET_ROOT, "masks",  "val"),
-        os.path.join(TILED_ROOT, "val"),
-        tile_size=TILE_SIZE,
-        keep_empty_ratio=KEEP_EMPTY_RATIO_VAL
-    )
+    model.to(DEVICE)
+    print(f"\nLoaded improved multimodal ResNet50 model for {num_classes} classes.")
+    return model
 
-    # Stronger satellite-safe augmentation
-    train_tf = A.Compose([
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.RandomRotate90(p=0.5),
 
-        A.RandomBrightnessContrast(p=0.35),
-        A.RandomGamma(p=0.20),
-        A.GaussNoise(p=0.15),
-        A.GaussianBlur(blur_limit=(3, 5), p=0.12),
-        A.ShiftScaleRotate(shift_limit=0.06, scale_limit=0.12, rotate_limit=20, p=0.5,
-                   border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0),
-        A.RandomFog(p=0.10),
-        A.Normalize(mean=(0.485,0.456,0.406), std=(0.229,0.224,0.225)),
-        ToTensorV2()
-    ])
-
-    val_tf = A.Compose([
-        A.Normalize(mean=(0.485,0.456,0.406), std=(0.229,0.224,0.225)),
-        ToTensorV2()
-    ])
-
-    train_ds = SegDataset(
-        os.path.join(TILED_ROOT, "train", "images"),
-        os.path.join(TILED_ROOT, "train", "masks"),
-        train_tf
-    )
-    val_ds = SegDataset(
-        os.path.join(TILED_ROOT, "val", "images"),
-        os.path.join(TILED_ROOT, "val", "masks"),
-        val_tf
-    )
-
-    train_loader = DataLoader(
-        train_ds, batch_size=BATCH_SIZE, shuffle=True,
-        num_workers=NUM_WORKERS, pin_memory=PIN_MEMORY
-    )
-    val_loader = DataLoader(
-        val_ds, batch_size=BATCH_SIZE, shuffle=False,
-        num_workers=NUM_WORKERS, pin_memory=PIN_MEMORY
-    )
-
-    # Model (ResNet34 is a solid baseline)
-    model = smp.Unet(
-        encoder_name="resnet34",
-        encoder_weights="imagenet",
-        in_channels=3,
-        classes=NUM_CLASSES
-    ).to(DEVICE)
-
-    # Freeze encoder initially
-    for p in model.encoder.parameters():
-        p.requires_grad = False
-
-    weights = compute_weights(os.path.join(TILED_ROOT, "train", "masks"), NUM_CLASSES).to(DEVICE)
-    focal = smp.losses.FocalLoss(mode="multiclass")
-    dice  = smp.losses.DiceLoss(mode="multiclass", from_logits=True)
-
-    def loss_fn(logits, target):
-        return 0.7 * focal(logits, target) + 0.3 * dice(logits, target)
-
-    optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        lr=LR_FROZEN
-    )
-
-    # Scheduler (big improvement)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-     optimizer, mode="min", patience=3, factor=0.3
+# =========================
+# Optimizer builder
+# =========================
+def build_optimizer_phase1(model):
+    return optim.AdamW(
+        [
+            {"params": model.image_backbone.layer4.parameters(), "lr": 1e-4},
+            {"params": model.image_proj.parameters(), "lr": 5e-4},
+            {"params": model.feature_mlp.parameters(), "lr": 5e-4},
+            {"params": model.fusion.parameters(), "lr": 5e-4},
+        ],
+        weight_decay=1e-4
     )
 
-    os.makedirs(CHECKPOINTS, exist_ok=True)
 
-    best_val = 1e9
-    patience = 0
+def build_optimizer_phase2(model):
+    return optim.AdamW(
+        [
+            {"params": model.image_backbone.layer3.parameters(), "lr": 3e-5},
+            {"params": model.image_backbone.layer4.parameters(), "lr": 5e-5},
+            {"params": model.image_proj.parameters(), "lr": 3e-4},
+            {"params": model.feature_mlp.parameters(), "lr": 3e-4},
+            {"params": model.fusion.parameters(), "lr": 3e-4},
+        ],
+        weight_decay=1e-4
+    )
 
-    for epoch in range(EPOCHS):
 
-        # Unfreeze + lower LR
-        if epoch == FREEZE_EPOCHS:
-            print("🔓 Unfreezing encoder + lowering LR")
-            for p in model.encoder.parameters():
+# =========================
+# Train / Eval
+# =========================
+def run_epoch(model, dataloader, criterion, optimizer=None, num_classes=1):
+    is_train = optimizer is not None
+    model.train() if is_train else model.eval()
+
+    running_loss = 0.0
+    seen = 0
+    conf_mat = np.zeros((num_classes, num_classes), dtype=np.int64)
+
+    use_amp = (DEVICE.type == "cuda")
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp) if is_train else None
+
+    for images, features, labels in tqdm(dataloader, desc="train" if is_train else "eval"):
+        if images.numel() == 0:
+            continue
+
+        images = images.to(DEVICE)
+        features = features.to(DEVICE)
+        labels = labels.to(DEVICE)
+
+        if is_train:
+            optimizer.zero_grad(set_to_none=True)
+
+        with torch.set_grad_enabled(is_train):
+            if use_amp:
+                with torch.autocast(device_type="cuda"):
+                    outputs = model(images, features)
+                    loss = criterion(outputs, labels)
+            else:
+                outputs = model(images, features)
+                loss = criterion(outputs, labels)
+
+            preds = torch.argmax(outputs, dim=1)
+
+            if is_train:
+                if use_amp:
+                    scaler.scale(loss).backward()
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                    optimizer.step()
+
+        bs = images.size(0)
+        running_loss += loss.item() * bs
+        seen += bs
+        conf_mat = update_confusion_matrix(conf_mat, labels, preds, num_classes)
+
+    epoch_loss = running_loss / seen if seen > 0 else float("nan")
+    epoch_acc, epoch_miou, epoch_f1 = compute_metrics_from_confusion(conf_mat)
+
+    return epoch_loss, epoch_acc, epoch_miou, epoch_f1
+
+
+def train_model(model, dataloaders, criterion, num_epochs, patience, num_classes):
+    since = time.time()
+
+    optimizer = build_optimizer_phase1(model)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode="min",
+        factor=0.5,
+        patience=2
+    )
+
+    best_model_wts = copy.deepcopy(model.state_dict())
+    best_val_loss = float("inf")
+    best_val_acc = -1.0
+    best_val_f1 = -1.0
+    epochs_without_improvement = 0
+
+    for epoch in range(num_epochs):
+        print(f"\nEpoch {epoch + 1}/{num_epochs}")
+        print("-" * 12)
+
+        # staged unfreezing
+        if epoch == UNFREEZE_EPOCH:
+            print("🔓 Unfreezing layer3 and lowering learning rates...")
+            for p in model.image_backbone.layer3.parameters():
                 p.requires_grad = True
-            optimizer = torch.optim.Adam(
-                model.parameters(),
-                lr=LR_UNFROZEN
+
+            optimizer = build_optimizer_phase2(model)
+            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer,
+                mode="min",
+                factor=0.5,
+                patience=2
             )
 
-        # ---- Train ----
-        model.train()
-        train_loss = 0.0
-        for imgs, masks in train_loader:
-            imgs, masks = imgs.to(DEVICE), masks.to(DEVICE)
-            optimizer.zero_grad(set_to_none=True)
-            logits = model(imgs)
-            loss = loss_fn(logits, masks)
-            loss.backward()
-            optimizer.step()
-            train_loss += float(loss.item())
+        train_loss, train_acc, train_miou, train_f1 = run_epoch(
+            model, dataloaders["train"], criterion, optimizer=optimizer, num_classes=num_classes
+        )
+        print(
+            f"train Loss: {train_loss:.4f} | "
+            f"Acc: {train_acc:.4f} | "
+            f"mIoU: {train_miou:.4f} | "
+            f"Macro-F1: {train_f1:.4f}"
+        )
 
-        train_loss /= max(1, len(train_loader))
-
-        # ---- Val ----
-        model.eval()
-        val_loss = 0.0
-        val_iou_sum = 0.0
-        with torch.no_grad():
-            for imgs, masks in val_loader:
-                imgs, masks = imgs.to(DEVICE), masks.to(DEVICE)
-                logits = model(imgs)
-                val_loss += float(loss_fn(logits, masks).item())
-                val_iou_sum += float(mean_iou(logits, masks, NUM_CLASSES).item())
-
-        val_loss /= max(1, len(val_loader))
-        val_iou = val_iou_sum / max(1, len(val_loader))
+        val_loss, val_acc, val_miou, val_f1 = run_epoch(
+            model, dataloaders["val"], criterion, optimizer=None, num_classes=num_classes
+        )
+        print(
+            f"val   Loss: {val_loss:.4f} | "
+            f"Acc: {val_acc:.4f} | "
+            f"mIoU: {val_miou:.4f} | "
+            f"Macro-F1: {val_f1:.4f}"
+        )
 
         scheduler.step(val_loss)
 
-        print(f"Epoch {epoch+1:02d} | Train {train_loss:.4f} | Val {val_loss:.4f} | mIoU {val_iou:.4f}")
-
-        # Save best
-        if val_loss < best_val:
-            best_val = val_loss
-            patience = 0
-            torch.save(model.state_dict(), os.path.join(CHECKPOINTS, "best.pt"))
-            with open(os.path.join(CHECKPOINTS, "best_summary.json"), "w") as f:
-                json.dump({
-                    "best_epoch": epoch+1,
-                    "best_val_loss": best_val,
-                    "best_val_mIoU": val_iou,
-                    "saved_at": datetime.now().isoformat()
-                }, f, indent=2)
-            print("✅ Saved new best")
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_val_acc = val_acc
+            best_val_f1 = val_f1
+            best_model_wts = copy.deepcopy(model.state_dict())
+            epochs_without_improvement = 0
+            print("✅ New best model saved.")
         else:
-            patience += 1
-            if patience >= EARLY_STOP:
-                print("⏹ Early stopping")
-                break
+            epochs_without_improvement += 1
+            print(f"No improvement for {epochs_without_improvement} epoch(s).")
 
-    print("✅ Training done.")
-    print("Best checkpoint:", os.path.join(CHECKPOINTS, "best.pt"))
+        if epochs_without_improvement >= patience:
+            print(f"⏹ Early stopping triggered after {patience} epochs without improvement.")
+            break
+
+    time_elapsed = time.time() - since
+    print(f"\nTraining complete in {int(time_elapsed // 60)}m {int(time_elapsed % 60)}s")
+    print(f"Best val Loss: {best_val_loss:.4f}")
+    print(f"Best val Acc : {best_val_acc:.4f}")
+    print(f"Best val F1  : {best_val_f1:.4f}")
+
+    model.load_state_dict(best_model_wts)
+    return model
+
+
+# =========================
+# Main
+# =========================
+if __name__ == "__main__":
+    if not DATASET_PATH.is_dir():
+        print(f"ERROR: Data directory not found at {DATASET_PATH}")
+        sys.exit(1)
+
+    if not METADATA_CSV.is_file():
+        print(f"ERROR: Metadata CSV not found at {METADATA_CSV}")
+        sys.exit(1)
+
+    dataloaders, datasets, dataset_sizes, class_to_idx = load_data(DATASET_PATH, METADATA_CSV)
+    num_classes = len(class_to_idx)
+
+    model_ft = load_model(num_classes)
+
+    class_weights = compute_class_weights_from_samples(
+        datasets["train"].samples,
+        num_classes
+    ).to(DEVICE)
+
+    print("\nClass weights:")
+    print(class_weights.detach().cpu().numpy())
+
+    criterion = nn.CrossEntropyLoss(
+        weight=class_weights,
+        label_smoothing=0.05
+    )
+
+    print("\nStarting improved multimodal training...")
+    model_ft = train_model(
+        model_ft,
+        dataloaders,
+        criterion,
+        num_epochs=NUM_EPOCHS,
+        patience=PATIENCE,
+        num_classes=num_classes
+    )
+
+    MODEL_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(model_ft.state_dict(), MODEL_OUTPUT_PATH)
+    print(f"\nModel saved successfully to {MODEL_OUTPUT_PATH}")
+
+    print("\n--- Final Test Set Evaluation ---")
+    test_loss, test_acc, test_miou, test_f1 = run_epoch(
+        model_ft,
+        dataloaders["test"],
+        criterion,
+        optimizer=None,
+        num_classes=num_classes
+    )
+
+    print(f"Test Loss     : {test_loss:.4f}")
+    print(f"Test Accuracy : {test_acc:.4f} (on {dataset_sizes['test']} samples)")
+    print(f"Test mIoU     : {test_miou:.4f}")
+    print(f"Test Macro-F1 : {test_f1:.4f}")
