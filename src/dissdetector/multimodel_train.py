@@ -30,20 +30,21 @@ from albumentations.pytorch import ToTensorV2
 # =========================
 # Configuration
 # =========================
-ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
-DATASET_PATH = ROOT / "jordan_dataset2"
+# ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
+ROOT = Path("/home/jad/plant-disease-detection")
+DATASET_PATH = ROOT / "jordan_dataset"
 METADATA_CSV = DATASET_PATH / "metadata_weather.csv"
 
-BATCH_SIZE = 8
-NUM_EPOCHS = 20
-IMAGE_SIZE = 384
+BATCH_SIZE = 6
+NUM_EPOCHS = 30
+IMAGE_SIZE = 512
 PATIENCE = 6
 SEED = 42
 
 # phase switch: after this epoch, unfreeze layer3 too
 UNFREEZE_EPOCH = 4
 
-MODEL_OUTPUT_PATH = ROOT / "src" / "dissdetector" / "resnet50_multimodal_plant_disease_best.pth"
+MODEL_OUTPUT_PATH = ROOT / "src" / "dissdetector" / "resnet50_multimodal_freeze_unfreeze.pth"
 
 DEVICE = torch.device(
     "cuda:0" if torch.cuda.is_available()
@@ -605,7 +606,7 @@ def train_model(model, dataloaders, criterion, num_epochs, patience, num_classes
     best_model_wts = copy.deepcopy(model.state_dict())
     best_val_loss = float("inf")
     best_val_acc = -1.0
-    best_val_f1 = -1.0
+    best_val_miou = -1.0
     epochs_without_improvement = 0
 
     for epoch in range(num_epochs):
@@ -651,7 +652,7 @@ def train_model(model, dataloaders, criterion, num_epochs, patience, num_classes
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_val_acc = val_acc
-            best_val_f1 = val_f1
+            best_val_miou = val_miou
             best_model_wts = copy.deepcopy(model.state_dict())
             epochs_without_improvement = 0
             print("✅ New best model saved.")
@@ -667,7 +668,7 @@ def train_model(model, dataloaders, criterion, num_epochs, patience, num_classes
     print(f"\nTraining complete in {int(time_elapsed // 60)}m {int(time_elapsed % 60)}s")
     print(f"Best val Loss: {best_val_loss:.4f}")
     print(f"Best val Acc : {best_val_acc:.4f}")
-    print(f"Best val F1  : {best_val_f1:.4f}")
+    print(f"Best val mIoU: {best_val_miou:.4f}")
 
     model.load_state_dict(best_model_wts)
     return model
