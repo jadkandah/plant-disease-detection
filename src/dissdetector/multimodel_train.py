@@ -410,6 +410,7 @@ def load_data(base_dir, metadata_csv):
             pin_memory=(DEVICE.type == "cuda"),
             persistent_workers=False,
             collate_fn=safe_collate,
+            drop_last=(split == "train"),   # FIX: avoid last batch of size 1 during training
         )
 
     dataset_sizes = {split: len(datasets[split]) for split in datasets}
@@ -545,10 +546,14 @@ def run_epoch(model, dataloader, criterion, optimizer=None, num_classes=1):
     conf_mat = np.zeros((num_classes, num_classes), dtype=np.int64)
 
     use_amp = (DEVICE.type == "cuda")
-    scaler = torch.cuda.amp.GradScaler(enabled=use_amp) if is_train else None
+    scaler = torch.amp.GradScaler("cuda", enabled=use_amp) if is_train else None
 
     for images, features, labels in tqdm(dataloader, desc="train" if is_train else "eval"):
         if images.numel() == 0:
+            continue
+
+        # FIX: skip too-small training batches that would break BatchNorm
+        if is_train and images.size(0) < 2:
             continue
 
         images = images.to(DEVICE)
