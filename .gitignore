@@ -72,7 +72,7 @@ src/dissdetector/project_model_resnet_iou.py\
 ############################################
 # DOCUMENTATION BUILD OUTPUT
 ############################################
-
+GRAD_CAM_Output/
 site/
 
 ############################################

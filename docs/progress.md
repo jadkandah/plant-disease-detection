@@ -322,9 +322,9 @@ Top ONLINE ranking:
 
 Top OFFLINE ranking:
  rank                                      run_name         model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
-    1 mobilenet_v3_small_512_epochs25_full_data_set mobilenet_v3_small  0.987488   0.905224       1574231.0       6.144800       0.934441*
-    2    efficientnet_b0_512_epochs30_full_data_set    efficientnet_b0  0.988073   0.903903       4078003.0      15.854101       0.712813*
-    3 mobilenet_v3_large_512_epochs30_full_data_set mobilenet_v3_large  0.985851   0.892892       4272487.0      16.510904       0.707540*
+    1 mobilenet_v3_small_512_epochs25_full_data_set mobilenet_v3_small  0.987488   0.905224       1574231.0       6.144800       0.934441***
+    2    efficientnet_b0_512_epochs30_full_data_set    efficientnet_b0  0.988073   0.903903       4078003.0      15.854101       0.712813***
+    3 mobilenet_v3_large_512_epochs30_full_data_set mobilenet_v3_large  0.985851   0.892892       4272487.0      16.510904       0.707540***
     4               mobilenet_v3_small_224_epochs25 mobilenet_v3_small  0.763788   0.338379       1563981.0       6.099131       0.456845
     5                        mobilenet_v3_small_224 mobilenet_v3_small  0.728668   0.289563       1563981.0       6.097002       0.397063
     6               mobilenet_v3_large_224_epochs30 mobilenet_v3_large  0.790062   0.389062       4259677.0      16.452242       0.282768
