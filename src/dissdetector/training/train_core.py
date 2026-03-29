@@ -37,18 +37,21 @@ IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
 def build_transforms(image_size: int):
     train_transforms = A.Compose([
-        A.RandomResizedCrop(size=(image_size, image_size), scale=(0.8, 1.0), ratio=(0.9, 1.1), p=1.0),
+        A.RandomResizedCrop(size=(image_size, image_size), scale=(0.6, 1.0),ratio=(0.75, 1.33), p=1.0),
         A.HorizontalFlip(p=0.5),
         A.Affine(
             translate_percent=0.0625,
-            scale=(0.9, 1.1),
+            scale=(0.6, 1.0),
             rotate=25,
             p=0.7,
             border_mode=cv2.BORDER_CONSTANT
         ),
         A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=0.5),
+        A.CoarseDropout(max_holes=8, max_height=64, max_width=64, min_holes=1, fill_value=0, p=0.5),
         A.Normalize(mean=NORM_MEAN, std=NORM_STD),
         ToTensorV2(),
+        A.RandomShadow(p=0.3),
+        A.GaussianBlur(p=0.2)
     ])
 
     val_test_transforms = A.Compose([
