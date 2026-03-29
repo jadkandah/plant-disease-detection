@@ -250,3 +250,86 @@ Test mIoU: 0.4057
 
 Next we will rerun the prevoius models without the weather meta data using the full dataset to see which results give better predictions.
 ####
+28 MAR
+
+Ran multimodal_train.py that uses a sequential model build to process both the images and the metadata_weather.csv with sensible data (but has no deviation from perfect) and the entire dataset.
+with the following parameters:
+
+BATCH_SIZE = 6
+NUM_EPOCHS = 30
+IMAGE_SIZE = 512
+PATIENCE = 6
+SEED = 42
+
+and the results:
+
+Test Loss     : 0.7657
+Test Accuracy : 0.9891 (on 8551 samples)
+Test mIoU     : 0.9343
+Test Macro-F1 : 0.9634
+####
+29 MAR 
+
+Ran the Offline models again but with full data set.
+with the following parameters:
+   batch_size: 4
+    learning_rate: 0.001
+    epochs: 25,30,30
+    image_size: 512
+
+results:
+
+=== ONLINE MODELS ===
+Best run: efficientnet_b0_224_epochs30
+Model: efficientnet_b0
+Overall score: 0.9815
+Test accuracy: 0.7666
+Test mIoU: 0.3442
+Parameters: 4065193
+Model size (MB): 15.80
+Training time (sec): 3193.20
+
+--- ONLINE MODELS: Special Awards ---
+Best accuracy: efficientnet_b0_224_epochs30 (0.7666)
+Best mIoU: efficientnet_b0_224_epochs30 (0.3442)
+Most parameter-efficient: efficientnet_b0_224_epochs30 (4065193)
+Smallest model: efficientnet_b0_224 (15.80 MB)
+Fastest training: resnet50_224_epochs40 (2772.16 sec)
+
+=== OFFLINE MODELS ===
+Best run: mobilenet_v3_small_512_epochs25_full_data_set
+Model: mobilenet_v3_small
+Overall score: 0.9344
+Test accuracy: 0.9875
+Test mIoU: 0.9052
+Parameters: 1574231
+Model size (MB): 6.14
+Training time (sec): 23424.24
+
+--- OFFLINE MODELS: Special Awards ---
+Best accuracy: efficientnet_b0_512_epochs30_full_data_set (0.9881)
+Best mIoU: mobilenet_v3_small_512_epochs25_full_data_set (0.9052)
+Most parameter-efficient: mobilenet_v3_small_224_epochs25 (1563981)
+Smallest model: mobilenet_v3_small_224 (6.10 MB)
+Fastest training: mobilenet_v3_small_224_epochs25 (2040.09 sec)
+
+Top ONLINE ranking:
+ rank                     run_name      model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
+    1 efficientnet_b0_224_epochs30 efficientnet_b0  0.766649   0.344221       4065193.0      15.799253       0.981464
+    2        resnet50_224_epochs40        resnet50  0.753382   0.338275      23600237.0      90.335001       0.822023
+    3          efficientnet_b0_224 efficientnet_b0  0.740114   0.336728       4065193.0      15.795885       0.734774
+    4                 resnet50_224        resnet50  0.631634   0.240571      23600237.0      90.332159       0.018475
+
+Top OFFLINE ranking:
+ rank                                      run_name         model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
+    1 mobilenet_v3_small_512_epochs25_full_data_set mobilenet_v3_small  0.987488   0.905224       1574231.0       6.144800       0.934441*
+    2    efficientnet_b0_512_epochs30_full_data_set    efficientnet_b0  0.988073   0.903903       4078003.0      15.854101       0.712813*
+    3 mobilenet_v3_large_512_epochs30_full_data_set mobilenet_v3_large  0.985851   0.892892       4272487.0      16.510904       0.707540*
+    4               mobilenet_v3_small_224_epochs25 mobilenet_v3_small  0.763788   0.338379       1563981.0       6.099131       0.456845
+    5                        mobilenet_v3_small_224 mobilenet_v3_small  0.728668   0.289563       1563981.0       6.097002       0.397063
+    6               mobilenet_v3_large_224_epochs30 mobilenet_v3_large  0.790062   0.389062       4259677.0      16.452242       0.282768
+    7                  efficientnet_b0_224_epochs30    efficientnet_b0  0.765609   0.347141       4065193.0      15.799253       0.255624
+    8                           efficientnet_b0_224    efficientnet_b0  0.706296   0.290867       4065193.0      15.795885       0.133153
+    9                        mobilenet_v3_large_224 mobilenet_v3_large  0.686785   0.265718       4259677.0      16.449530       0.109846
+   10               mobilenet_v3_small_224_epochs25 mobilenet_v3_small       NaN        NaN             NaN            NaN            NaN
+   ####
