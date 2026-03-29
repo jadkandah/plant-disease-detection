@@ -332,4 +332,38 @@ Top OFFLINE ranking:
     8                           efficientnet_b0_224    efficientnet_b0  0.706296   0.290867       4065193.0      15.795885       0.133153
     9                        mobilenet_v3_large_224 mobilenet_v3_large  0.686785   0.265718       4259677.0      16.449530       0.109846
    10               mobilenet_v3_small_224_epochs25 mobilenet_v3_small       NaN        NaN             NaN            NaN            NaN
-   ####
+####
+29 MAR 
+
+Note: All this was tested on mobilenet_v3_small_512_epochs25_full_data_set.pth because it only uses the images and so what happens here is assumed to have happened with the large (online) sequential model that also uses metadata that also had very high accuracy.
+
+Issue was found due to very high accuracy in all train val and test made a code to blur the ceter of images (the leaf) to see if model guesses due to background and results were:
+
+Total images tested: 8552
+Normal accuracy: 8445/8552 = 98.7488%
+Blurry accuracy: 1782/8552 = 20.8372%
+
+Which is Okay.
+
+But still did not make sense so used GRAD CAM on 10 random images from each disease of every crop and results show that in most images the model relies on top left corner of image (background).
+
+So as a solution the following code was added to the transformations prior to training (not saved to the dataset):
+' inside A.Compose([
+            ...
+
+            A.CoarseDropout(
+                max_holes=8,
+                max_height=64,
+                max_width=64,
+                min_holes=1,
+                fill_value=0,
+                p=0.5
+            ),
+            A.RandomShadow(p=0.3),
+            A.GaussianBlur(p=0.2)
+
+            ...
+            ]) and also scale and ratio were changed to scale=(0.6, 1.0), ratio=(0.75, 1.33)
+
+I have not yet rerun the model but the changes are done so next I will run and see if there is improvement.
+####
