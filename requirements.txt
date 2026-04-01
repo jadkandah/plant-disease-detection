@@ -9,3 +9,6 @@ matplotlib==3.8.4
 albumentations
 opencv-python
 mlflow
+# timm ....... aslo for sam
+# wget -O mobile_sam.pt https://github.com/ChaoningZhang/MobileSAM/raw/master/weights/mobile_sam.pt ....... do this for sam to work
+# git+https://github.com/ChaoningZhang/MobileSAM.git ..... this is sam

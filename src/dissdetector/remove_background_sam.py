@@ -262,8 +262,14 @@ def process_image(image_path, predictor, input_root, output_root):
         print(f"[WARNING] Could not crop: {image_path}")
         return False
 
+<<<<<<< HEAD
     out_path = get_output_path(image_path, input_root, output_root)
     ensure_dir(out_path.parent)
+=======
+    stem = Path(image_path).stem
+    ensure_dir(out_dir)
+    cv2.imwrite(os.path.join(out_dir, f"{stem}.png"), cropped_img)
+>>>>>>> 457997383d8292166de607acadf3c94a4eddc817
 
     cv2.imwrite(str(out_path), cropped_img)
     return True
