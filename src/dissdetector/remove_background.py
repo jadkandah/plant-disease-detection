@@ -6,8 +6,9 @@ from pathlib import Path
 # =========================
 # CONFIG
 # =========================
-ROOT = Path("/Users/sanadmadani/Desktop/plant-disease-detection")
 
+#ROOT = Path("/Users/sanadmadani/Desktop/plant-disease-detection")
+ROOT = Path("/home/jad/plant-disease-detection")
 INPUT_DIR = ROOT / "jordan_dataset2" / "train"
 OUTPUT_DIR = ROOT / "no_background_images"
 
