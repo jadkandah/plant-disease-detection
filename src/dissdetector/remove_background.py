@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path("/Users/sanadmadani/Desktop/plant-disease-detection")
 
 INPUT_DIR = ROOT / "jordan_dataset2" / "train"
-OUTPUT_DIR = ROOT / "green_seg_output"
+OUTPUT_DIR = ROOT / "no_background_images"
 
 VALID_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
