@@ -8,11 +8,11 @@ from mobile_sam import sam_model_registry, SamPredictor
 # =========================
 # CONFIG
 # =========================
-ROOT = Path("/Users/sanadmadani/Desktop/plant-disease-detection")
+# ROOT = Path("/Users/sanadmadani/Desktop/plant-disease-detection")
+ROOT = Path("/home/jad/plant-disease-detection")
 
-
-INPUT_DIR = ROOT / "jordan_dataset2"/"test"     # folder of input images
-OUTPUT_DIR = ROOT / "green_seg_sam_output"    # folder where results will be saved
+INPUT_DIR = ROOT / "jordan_dataset" / "train"
+OUTPUT_DIR = ROOT / "jordan_dataset" / "train_images_background_removed"
 
 CHECKPOINT_PATH = ROOT / "mobile_sam.pt"
 
@@ -28,7 +28,7 @@ def ensure_dir(path):
 
 
 def load_model():
-    sam = sam_model_registry[MODEL_TYPE](checkpoint=CHECKPOINT_PATH)
+    sam = sam_model_registry[MODEL_TYPE](checkpoint=str(CHECKPOINT_PATH))
     sam.to(device=DEVICE)
     sam.eval()
     predictor = SamPredictor(sam)
@@ -38,7 +38,7 @@ def load_model():
 def get_center_prompt_box(image):
     """
     Create a central prompt box automatically.
-    Since your leaf is usually near center-ish and on plain background,
+    Since the leaf is usually near the center and on a plain background,
     this is a decent zero-manual-prompt start.
     """
     h, w = image.shape[:2]
@@ -63,7 +63,6 @@ def choose_best_mask(masks, scores):
         if area == 0:
             continue
 
-        # Penalize overly huge masks
         quality = float(score) - 0.000001 * area
 
         if quality > best_value:
@@ -83,7 +82,6 @@ def clean_mask(mask):
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_small)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_big)
 
-    # Keep largest contour only
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         return np.zeros_like(mask)
@@ -107,9 +105,7 @@ def crop_from_mask(image, mask, padding=10):
     y2 = min(y + h + padding, image.shape[0])
 
     cropped = image[y1:y2, x1:x2]
-    cropped_mask = mask[y1:y2, x1:x2]
-
-    return cropped, cropped_mask, (x1, y1, x2, y2)
+    return cropped
 
 
 def apply_mask_white_bg(image, mask):
@@ -142,33 +138,15 @@ def process_image(image_path, predictor, out_dir):
     best_mask = clean_mask(best_mask)
 
     masked = apply_mask_white_bg(image_bgr, best_mask)
-    crop_data = crop_from_mask(masked, best_mask, padding=CROP_PADDING)
+    cropped_img = crop_from_mask(masked, best_mask, padding=CROP_PADDING)
 
-    stem = Path(image_path).stem
-
-    mask_dir = os.path.join(out_dir, "masks")
-    crop_dir = os.path.join(out_dir, "cropped")
-    overlay_dir = os.path.join(out_dir, "overlay")
-
-    ensure_dir(mask_dir)
-    ensure_dir(crop_dir)
-    ensure_dir(overlay_dir)
-
-    cv2.imwrite(os.path.join(mask_dir, f"{stem}_mask.png"), best_mask)
-
-    if crop_data is None:
+    if cropped_img is None:
         print(f"[WARNING] Could not crop: {image_path}")
         return False
 
-    cropped_img, cropped_mask, bbox = crop_data
-    x1, y1, x2, y2 = bbox
-
-    debug = image_bgr.copy()
-    cv2.rectangle(debug, (box[0], box[1]), (box[2], box[3]), (255, 0, 0), 2)
-    cv2.rectangle(debug, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-    cv2.imwrite(os.path.join(crop_dir, f"{stem}_crop.png"), cropped_img)
-    cv2.imwrite(os.path.join(overlay_dir, f"{stem}_debug.png"), debug)
+    stem = Path(image_path).stem
+    ensure_dir(out_dir)
+    cv2.imwrite(os.path.join(out_dir, f"{stem}.png"), cropped_img)
 
     return True
 
