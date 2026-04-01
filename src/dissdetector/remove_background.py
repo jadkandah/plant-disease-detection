@@ -8,17 +8,12 @@ from pathlib import Path
 # =========================
 ROOT = Path("/Users/sanadmadani/Desktop/plant-disease-detection")
 
+INPUT_DIR = ROOT / "jordan_dataset2" / "train"
+OUTPUT_DIR = ROOT / "green_seg_output"
 
-INPUT_DIR = ROOT / "jordan_dataset2"/"train"     # folder of input images
-OUTPUT_DIR = ROOT / "green_seg_output"    # folder where results will be saved
-
-# Extensions allowed
 VALID_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
-# Minimum contour area to keep
 MIN_LEAF_AREA = 500
-
-# Add padding around crop
 CROP_PADDING = 15
 
 
@@ -34,51 +29,31 @@ def read_image(image_path):
 
 
 def get_green_mask(image_bgr):
-    """
-    Segment green-ish areas using HSV.
-    You may need to tune these values a bit for your dataset.
-    """
     hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
 
-    # Main green range
     lower_green_1 = np.array([25, 20, 20], dtype=np.uint8)
     upper_green_1 = np.array([100, 255, 255], dtype=np.uint8)
-
     mask1 = cv2.inRange(hsv, lower_green_1, upper_green_1)
 
-    # Optional extra range for pale/desaturated green leaves
     lower_green_2 = np.array([15, 10, 20], dtype=np.uint8)
     upper_green_2 = np.array([40, 255, 255], dtype=np.uint8)
-
     mask2 = cv2.inRange(hsv, lower_green_2, upper_green_2)
 
-    mask = cv2.bitwise_or(mask1, mask2)
-    return mask
+    return cv2.bitwise_or(mask1, mask2)
 
 
 def clean_mask(mask):
-    """
-    Morphological cleaning.
-    """
     kernel_small = np.ones((5, 5), np.uint8)
     kernel_big = np.ones((7, 7), np.uint8)
 
-    # Remove tiny noise
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_small)
-
-    # Fill gaps
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_big)
-
-    # Slight dilation to recover thin borders
     mask = cv2.dilate(mask, kernel_small, iterations=1)
 
     return mask
 
 
 def keep_largest_contour(mask):
-    """
-    Keep only the largest valid contour.
-    """
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     if not contours:
@@ -109,19 +84,16 @@ def crop_from_mask(image, mask, padding=10):
     y2 = min(y + h + padding, image.shape[0])
 
     cropped = image[y1:y2, x1:x2]
-    cropped_mask = mask[y1:y2, x1:x2]
-
-    return cropped, cropped_mask, (x1, y1, x2, y2)
+    return cropped
 
 
 def apply_mask(image, mask):
     """
     Keep leaf, set background to white.
     """
-    result = image.copy()
     background = np.full_like(image, 255)
     mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-    out = np.where(mask_3ch == 255, result, background)
+    out = np.where(mask_3ch == 255, image, background)
     return out
 
 
@@ -132,39 +104,21 @@ def process_one_image(image_path, out_dir):
     cleaned_mask = clean_mask(raw_mask)
     final_mask, cnt = keep_largest_contour(cleaned_mask)
 
-    stem = Path(image_path).stem
-
-    mask_dir = os.path.join(out_dir, "masks")
-    crop_dir = os.path.join(out_dir, "cropped")
-    overlay_dir = os.path.join(out_dir, "overlay")
-
-    ensure_dir(mask_dir)
-    ensure_dir(crop_dir)
-    ensure_dir(overlay_dir)
-
-    cv2.imwrite(os.path.join(mask_dir, f"{stem}_mask.png"), final_mask)
-
     if cnt is None:
         print(f"[WARNING] No good leaf found: {image_path}")
         return False
 
-    masked = apply_mask(image, final_mask)
-    crop_data = crop_from_mask(masked, final_mask, padding=CROP_PADDING)
+    final_img = apply_mask(image, final_mask)
+    cropped_final = crop_from_mask(final_img, final_mask, padding=CROP_PADDING)
 
-    if crop_data is None:
+    if cropped_final is None:
         print(f"[WARNING] Could not crop: {image_path}")
         return False
 
-    cropped_img, cropped_mask, bbox = crop_data
-    x1, y1, x2, y2 = bbox
+    stem = Path(image_path).stem
+    ensure_dir(out_dir)
 
-    # Draw bbox on original for debugging
-    debug = image.copy()
-    cv2.rectangle(debug, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-    cv2.imwrite(os.path.join(crop_dir, f"{stem}_crop.png"), cropped_img)
-    cv2.imwrite(os.path.join(overlay_dir, f"{stem}_bbox.png"), debug)
-
+    cv2.imwrite(os.path.join(out_dir, f"{stem}.png"), cropped_final)
     return True
 
 
