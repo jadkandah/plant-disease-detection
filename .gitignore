@@ -32,7 +32,7 @@ jordan_dataset2/
 ############################################
 
 # Model weights & checkpoints
-*.pth
+#*.pth
 *.pt
 *.ckpt
 *.onnx
