@@ -32,7 +32,7 @@ jordan_dataset2/
 ############################################
 
 # Model weights & checkpoints
-#*.pth
+*.pth
 *.pt
 *.ckpt
 *.onnx
@@ -62,12 +62,7 @@ out/
 data/
 datasets/
 data_raw/
-<<<<<<< HEAD
 src/dissdetector/project_model_resnet_iou.py
-=======
-jordan_dataset2/
-src/dissdetector/project_model_resnet_iou.py\
->>>>>>> f8bca0f (ss)
 
 ############################################
 # DOCUMENTATION BUILD OUTPUT
@@ -95,7 +90,3 @@ tempCodeRunnerFile.*
 *.tmp
 *.bak
 *.swp
-<<<<<<< HEAD
-=======
-
->>>>>>> f8bca0f (ss)
