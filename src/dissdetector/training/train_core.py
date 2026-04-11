@@ -8,12 +8,10 @@ import cv2
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from albumentations.pytorch import ToTensorV2
 from PIL import Image, UnidentifiedImageError
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data._utils.collate import default_collate
-from torchvision import transforms
 from tqdm import tqdm
 
 from src.dissdetector.training.early_stopping import EarlyStopping
@@ -37,7 +35,7 @@ IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
 def build_transforms(image_size: int):
     train_transforms = A.Compose([
-        A.RandomResizedCrop(size=(image_size, image_size), scale=(0.6, 1.0),ratio=(0.75, 1.33), p=1.0),
+        A.RandomResizedCrop(size=(image_size, image_size), scale=(0.6, 1.0), ratio=(0.75, 1.33), p=1.0),
         A.HorizontalFlip(p=0.5),
         A.Affine(
             translate_percent=0.0625,
@@ -78,13 +76,16 @@ def list_leaf_classes(split_dir: Path):
 
 
 def build_shared_mapping(base_dir: Path):
+    split_dirs = {
+        "train": base_dir / "train_images_background_removed",
+        "val": base_dir / "val",
+        "test": base_dir / "test",
+    }
+
     all_classes = set()
-    split_dirs = {}
-    for split in ["train", "val", "test"]:
-        sd = base_dir / split
+    for split, sd in split_dirs.items():
         if not sd.is_dir():
-            raise RuntimeError(f"Missing split directory: {sd}")
-        split_dirs[split] = sd
+            raise RuntimeError(f"Missing split directory for {split}: {sd}")
         all_classes |= list_leaf_classes(sd)
 
     classes = sorted(all_classes)

@@ -11,9 +11,8 @@ from tqdm import tqdm
 # Configuration
 # =========================
 
-ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
-#DATASET_PATH = Path("/home/jad/plant-disease-detection/jordan_dataset")
-DATASET_PATH = ROOT / "jordan_dataset2"
+ROOT = Path("/home/jad/plant-disease-detection")
+DATASET_PATH = ROOT / "jordan_dataset"
 OUTPUT_CSV = DATASET_PATH / "metadata_weather.csv"
 
 LATITUDE = 31.9539
@@ -135,7 +134,7 @@ PROFILE_MONTHS = {
 def list_images(base_dir: Path):
     image_paths = []
 
-    for split in ["train", "val", "test"]:
+    for split in ["train_images_background_removed", "val", "test"]:
         split_dir = base_dir / split
         if not split_dir.is_dir():
             continue
@@ -152,12 +151,12 @@ def list_images(base_dir: Path):
 
 def normalize_label_from_rel_path(rel_path: str):
     """
-    Expected common structure:
-        train/ClassName/image.jpg
-        val/ClassName/image.jpg
-        test/ClassName/image.jpg
+    Expected structures:
+        split/crop/disease_class/image.jpg       (new: train_images_background_removed/Tomato/Early_blight/img.jpg)
+        split/ClassName/image.jpg                (old: train/Tomato___Early_blight/img.jpg)
 
-    If there are deeper nested folders, the class folder is assumed to be parts[1].
+    If there are 4+ parts, the disease is in parts[2].
+    If there are 3 parts, the disease is encoded in parts[1] (using ___, or check CLASS_NAME_MAP).
     """
     parts = rel_path.split("/")
 
@@ -165,6 +164,27 @@ def normalize_label_from_rel_path(rel_path: str):
         return None, None, None
 
     split_name = parts[0]
+    
+    # Handle 4+ part structure: split/crop/disease_class/filename
+    if len(parts) >= 4:
+        crop_name = parts[1]
+        disease_class = parts[2]
+        
+        # Try direct lookup
+        if disease_class in CLASS_NAME_MAP:
+            crop, disease = CLASS_NAME_MAP[disease_class]
+            return split_name, crop, disease
+        
+        # Try combined key: "crop___disease_class"
+        combined_key = f"{crop_name}___{disease_class}"
+        if combined_key in CLASS_NAME_MAP:
+            crop, disease = CLASS_NAME_MAP[combined_key]
+            return split_name, crop, disease
+        
+        # Fallback: use crop name from folder and disease class name
+        return split_name, crop_name, disease_class
+    
+    # Handle 3-part structure: split/ClassName/filename
     class_name = parts[1]
 
     if class_name in CLASS_NAME_MAP:
