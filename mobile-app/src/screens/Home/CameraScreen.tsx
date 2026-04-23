@@ -101,7 +101,7 @@ export default function CameraScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
-        {!effectiveOnline && (
+        {!isConnected && (
           <View style={styles.offlineBanner}>
             <Text style={styles.offlineText}>{t('gallery.offlineBanner')}</Text>
           </View>

@@ -73,6 +73,7 @@ export async function syncOfflineQueue(): Promise<number> {
 
       formData.append('image', { uri: item.imageUri, name: filename, type: fileType } as any);
       formData.append('source_type', item.sourceType);
+      formData.append('mode', 'offline');
 
       await apiClient.post('/predict/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },

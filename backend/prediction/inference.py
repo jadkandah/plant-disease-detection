@@ -292,6 +292,7 @@ def predict_from_array(image_array: np.ndarray, mode: str = "offline",
 
     if mode == "online":
         # ── MultiModal: image + weather features ──
+        print("[inference] Using MultiModal ResNet")
         model = _load_online_model()
         weather_features = _normalize_weather(temperature, humidity, wind_speed)
         feat_tensor = torch.tensor([weather_features], dtype=torch.float32).to(device)
@@ -304,6 +305,7 @@ def predict_from_array(image_array: np.ndarray, mode: str = "offline",
         model_name = "MultiModalResNet50"
     else:
         # ── Offline: image only ──
+        print("[inference] Using MobileNetV3 Small")
         model = _load_offline_model()
 
         with torch.no_grad():
