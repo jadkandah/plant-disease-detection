@@ -63,6 +63,7 @@ export default function GalleryScreen({ navigation }: any) {
       }
 
       formData.append('source_type', 'gallery');
+      formData.append('mode', isOnlineMode ? 'online' : 'offline');
 
       // Attach weather data for enhanced online prediction
       if (weather) {

@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/', include('diseases.urls')),
     path('api/', include('history.urls')),
     path('api/', include('prediction.urls')),
+    path('api/weather/', include('weather.urls')),
     path('api/admin/', include('adminpanel.urls')),
 ]
 

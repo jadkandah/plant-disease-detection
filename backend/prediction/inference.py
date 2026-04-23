@@ -2,9 +2,11 @@
 Real AI inference using the trained ResNet-50 plant disease model.
 
 The model is loaded once (singleton) and reused for all predictions.
-Input: PIL Image  →  Output: (class_key: str, confidence: float)
+Input: PIL Image or numpy array  →  Output: (class_key: str, confidence: float)
 """
 import os
+import cv2
+import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.models as models
@@ -20,10 +22,24 @@ NORM_MEAN = [0.485, 0.456, 0.406]
 NORM_STD  = [0.229, 0.224, 0.225]
 
 # Path to the trained .pth weights
-MODEL_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "src", "dissdetector", "resnet50_multimodal_plant_disease_improved.pth"
-)
+# Try the saved_models directory first, then fall back to src/dissdetector
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+MODEL_PATH_CANDIDATES = [
+    os.path.join(_PROJECT_ROOT, "saved_models", "multimodal_resnet50_background_removed_512_epochs40.pth"),
+    os.path.join(_PROJECT_ROOT, "src", "dissdetector", "resnet50_multimodal_plant_disease_improved.pth"),
+]
+
+MODEL_PATH = None
+for _path in MODEL_PATH_CANDIDATES:
+    if os.path.exists(_path):
+        MODEL_PATH = _path
+        break
+
+if MODEL_PATH is None:
+    print(f"[inference] WARNING: No model weights found! Searched:")
+    for _path in MODEL_PATH_CANDIDATES:
+        print(f"  - {_path}")
 
 # ──────────────────────────────────────────────
 # Class mapping — 45 classes, sorted alphabetically.
@@ -109,6 +125,9 @@ def _load_model():
     if _model is not None:
         return _model
 
+    if MODEL_PATH is None:
+        raise FileNotFoundError("No model weights file found. Cannot run inference.")
+
     device = _get_device()
     print(f"[inference] Loading ResNet-50 model on {device}...")
     print(f"[inference] Model path: {MODEL_PATH}")
@@ -130,22 +149,18 @@ def _load_model():
     return _model
 
 
-def predict_image(image_file) -> tuple[str, float]:
+def _run_inference(pil_image: Image.Image) -> tuple[str, float]:
     """
-    Run inference on a Django UploadedFile or file-like object.
+    Internal: run the model on a PIL Image.
 
     Returns:
-        (class_key, confidence) — the predicted class name and softmax probability.
+        (class_key, confidence)
     """
     model = _load_model()
     device = _get_device()
 
-    # Read the uploaded file into a PIL Image
-    image_bytes = image_file.read()
-    image = Image.open(BytesIO(image_bytes)).convert("RGB")
-
     # Apply the same transforms used during validation
-    input_tensor = inference_transform(image).unsqueeze(0).to(device)
+    input_tensor = inference_transform(pil_image).unsqueeze(0).to(device)
 
     # Run inference
     with torch.no_grad():
@@ -158,3 +173,34 @@ def predict_image(image_file) -> tuple[str, float]:
 
     print(f"[inference] Predicted: {class_key} (confidence: {conf})")
     return class_key, conf
+
+
+def predict_image(image_file) -> tuple[str, float]:
+    """
+    Run inference on a Django UploadedFile or file-like object.
+
+    Returns:
+        (class_key, confidence) — the predicted class name and softmax probability.
+    """
+    # Read the uploaded file into a PIL Image
+    image_bytes = image_file.read()
+    image = Image.open(BytesIO(image_bytes)).convert("RGB")
+    return _run_inference(image)
+
+
+def predict_from_array(image_array: np.ndarray) -> tuple[str, float]:
+    """
+    Run inference on a preprocessed numpy array (BGR format from cv2).
+
+    This is used after the preprocessing pipeline (quality check + optional SAM).
+
+    Args:
+        image_array: BGR numpy array from cv2/preprocessing pipeline
+
+    Returns:
+        (class_key, confidence) — the predicted class name and softmax probability.
+    """
+    # Convert BGR (cv2) → RGB (PIL)
+    image_rgb = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
+    pil_image = Image.fromarray(image_rgb)
+    return _run_inference(pil_image)
