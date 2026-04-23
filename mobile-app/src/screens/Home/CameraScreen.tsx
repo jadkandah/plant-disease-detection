@@ -19,8 +19,8 @@ export default function CameraScreen({ navigation }: any) {
   const { isOnlineMode } = useModelMode();
   const { weather } = useWeatherRisk();
 
-  // Effective online: both toggle is online AND device has internet
-  const effectiveOnline = isOnlineMode && isConnected;
+  // The backend handles both online (ResNet) and offline (MobileNet) modes.
+  // We only queue for later if there is NO physical internet connection.
 
   if (!permission) return <View style={styles.container} />;
 
@@ -48,8 +48,8 @@ export default function CameraScreen({ navigation }: any) {
           return;
         }
 
-        // If offline mode or no connection, queue
-        if (!effectiveOnline) {
+        // If no internet connection, queue locally
+        if (!isConnected) {
           const id = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           await enqueueOfflinePrediction({ id, imageUri: photo.uri, sourceType: 'camera', timestamp: new Date().toISOString() });
           Alert.alert(t('gallery.savedOffline'), t('gallery.savedOfflineMsg'), [{ text: t('common.ok'), onPress: () => navigation.goBack() }]);

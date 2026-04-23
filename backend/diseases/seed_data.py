@@ -79,12 +79,27 @@ CLASSES = {
     "Wheat___Stem_fly": ("Wheat", "Stem Fly"),
     "Wheat___Yellow_Rust": ("Wheat", "Yellow Rust"),
     "Wheat___healthy": ("Wheat", "Healthy"),
+
+    # Eggplant (7)
+    "Eggplant___healthy": ("Eggplant", "Healthy"),
+    "Eggplant___Insect_Pest_Disease": ("Eggplant", "Insect Pest Disease"),
+    "Eggplant___Leaf_Spot_Disease": ("Eggplant", "Leaf Spot Disease"),
+    "Eggplant___Mosaic_Virus_Disease": ("Eggplant", "Mosaic Virus Disease"),
+    "Eggplant___Small_Leaf_Disease": ("Eggplant", "Small Leaf Disease"),
+    "Eggplant___White_Mold_Disease": ("Eggplant", "White Mold Disease"),
+    "Eggplant___Wilt_Disease": ("Eggplant", "Wilt Disease"),
+
+    # Orange extended (3 additional)
+    "Orange___healthy": ("Orange", "Healthy"),
+    "Orange___Black_spot": ("Orange", "Black Spot"),
+    "Orange___Canker": ("Orange", "Canker"),
 }
 
 # Arabic crop name mapping
 CROP_NAME_AR = {
     "Apple": "تفاح",
     "Cauliflower": "قرنبيط",
+    "Eggplant": "باذنجان",
     "Grape": "عنب",
     "Maize": "ذرة",
     "Olive": "زيتون",
@@ -129,6 +144,16 @@ DISEASE_NAME_AR = {
     "Scab": "الجرب",
     "Stem Fly": "ذبابة الساق",
     "Yellow Rust": "الصدأ الأصفر",
+    # Eggplant diseases
+    "Insect Pest Disease": "مرض الآفات الحشرية",
+    "Leaf Spot Disease": "مرض تبقع الأوراق",
+    "Mosaic Virus Disease": "مرض فيروس الفسيفساء",
+    "Small Leaf Disease": "مرض صغر الأوراق",
+    "White Mold Disease": "مرض العفن الأبيض",
+    "Wilt Disease": "مرض الذبول",
+    # Orange extra diseases
+    "Black Spot": "البقعة السوداء",
+    "Canker": "التقرح",
 }
 
 def seed_data():

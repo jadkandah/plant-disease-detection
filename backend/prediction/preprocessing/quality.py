@@ -1,38 +1,38 @@
 """
 Image quality checks for plant disease detection.
 
-Rejects images that are blurry, too dark, too bright, low contrast,
-corrupted, or completely black — prevents garbage-in/garbage-out.
+Rejects only truly unusable images: completely black, fully white,
+corrupted, or extremely blurry. Normal phone photos always pass.
 """
 import cv2
 import numpy as np
 
 
-def is_blurry(image, threshold=100):
-    """Check if image is blurry using Laplacian variance."""
+def is_blurry(image, threshold=15):
+    """Only reject extremely blurry images (threshold 15 is very permissive)."""
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return cv2.Laplacian(gray, cv2.CV_64F).var() < threshold
 
 
-def is_too_dark(image, threshold=50):
-    """Check if image is too dark (mean brightness below threshold)."""
+def is_too_dark(image, threshold=15):
+    """Only reject nearly black images."""
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return np.mean(gray) < threshold
 
 
-def is_too_bright(image, threshold=200):
-    """Check if image is too bright (mean brightness above threshold)."""
+def is_too_bright(image, threshold=245):
+    """Only reject nearly white/overexposed images."""
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return np.mean(gray) > threshold
 
 
-def is_low_contrast(image, threshold=20):
-    """Check if image has too little contrast (low std deviation)."""
+def is_low_contrast(image, threshold=8):
+    """Only reject images with almost zero contrast."""
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return gray.std() < threshold
 
 
-def is_black(image, threshold=10):
+def is_black(image, threshold=5):
     """Check if image is essentially all black."""
     return image.mean() < threshold
 

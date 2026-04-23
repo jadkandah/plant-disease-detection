@@ -39,8 +39,8 @@ class PredictView(generics.CreateAPIView):
         # ──────────────────────────────────────────
         # 2. Preprocessing pipeline (quality check + optional SAM)
         #
-        #   🟢 Offline: image → quality check → inference
-        #   🔵 Online:  image → quality check → SAM leaf extraction → inference
+        #   🟢 Offline: image → quality check → MobileNetV3-Small
+        #   🔵 Online:  image → quality check → SAM → MultiModalResNet50 + weather
         # ──────────────────────────────────────────
         print(f"[predict] Mode: {mode}")
         preprocessed_image, preprocess_status = preprocess_image(image_file, mode=mode)
@@ -52,9 +52,18 @@ class PredictView(generics.CreateAPIView):
             )
 
         # 3. Run AI inference on the preprocessed image
+        #    Online mode also passes weather features to the multimodal model
         try:
-            predicted_class_key, confidence = predict_from_array(preprocessed_image)
+            predicted_class_key, confidence = predict_from_array(
+                preprocessed_image,
+                mode=mode,
+                temperature=weather_temperature,
+                humidity=weather_humidity,
+                wind_speed=weather_wind_speed,
+            )
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response(
                 {"error": f"Model inference failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -64,13 +73,19 @@ class PredictView(generics.CreateAPIView):
         try:
             predicted_disease = DiseaseInfo.objects.get(class_key=predicted_class_key)
         except DiseaseInfo.DoesNotExist:
-            return Response(
-                {"error": f"No disease info found for class: {predicted_class_key}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            # If the class isn't in the DB yet, return a basic response
+            print(f"[predict] WARNING: No DiseaseInfo for class '{predicted_class_key}' — returning raw result")
+            return Response({
+                "success": True,
+                "mode": mode,
+                "prediction_key": predicted_class_key,
+                "confidence": confidence,
+                "is_healthy": "healthy" in predicted_class_key.lower(),
+                "disease_info": None,
+                "weather_context": None,
+            }, status=status.HTTP_200_OK)
 
         # 5. Save to prediction history (including weather context)
-        # Re-open the image file for saving (seek back to start)
         image_file.seek(0)
         PredictionRecord.objects.create(
             user=request.user,

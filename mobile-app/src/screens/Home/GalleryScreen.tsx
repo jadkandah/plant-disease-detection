@@ -18,8 +18,8 @@ export default function GalleryScreen({ navigation }: any) {
   const { isOnlineMode } = useModelMode();
   const { weather } = useWeatherRisk();
 
-  // Effective online: both toggle is online AND device has internet
-  const effectiveOnline = isOnlineMode && isConnected;
+  // The backend handles both online (ResNet) and offline (MobileNet) modes.
+  // We only queue for later if there is NO physical internet connection.
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -36,7 +36,7 @@ export default function GalleryScreen({ navigation }: any) {
   const uploadImage = async () => {
     if (!imageUri) return;
     console.log('[Gallery] uploadImage called, isConnected:', isConnected, 'isOnlineMode:', isOnlineMode, 'platform:', Platform.OS);
-    if (!effectiveOnline) {
+    if (!isConnected) {
       const id = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       await enqueueOfflinePrediction({ id, imageUri, sourceType: 'gallery', timestamp: new Date().toISOString() });
       Alert.alert(t('gallery.savedOffline'), t('gallery.savedOfflineMsg'), [{ text: t('common.ok'), onPress: () => navigation.goBack() }]);
@@ -100,7 +100,7 @@ export default function GalleryScreen({ navigation }: any) {
       </View>
 
       <View style={styles.content}>
-        {!effectiveOnline && (
+        {!isConnected && (
           <View style={styles.offlineBanner}>
             <Text style={styles.offlineText}>{t('gallery.offlineBanner')}</Text>
           </View>
@@ -118,7 +118,7 @@ export default function GalleryScreen({ navigation }: any) {
         <Text style={styles.buttonSecondaryText}>{imageUri ? t('gallery.changePhoto') : t('gallery.selectPhoto')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={[styles.buttonPrimary, (!imageUri || isProcessing) && styles.disabledButton]} onPress={uploadImage} disabled={!imageUri || isProcessing}>
-        {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.buttonPrimaryText}>{effectiveOnline ? t('gallery.analyzeCrop') : t('gallery.saveForLater')}</Text>}
+        {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.buttonPrimaryText}>{isConnected ? t('gallery.analyzeCrop') : t('gallery.saveForLater')}</Text>}
       </TouchableOpacity>
       </View>
     </SafeAreaView>
