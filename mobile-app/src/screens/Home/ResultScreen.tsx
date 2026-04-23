@@ -19,14 +19,25 @@ export default function ResultScreen({ route, navigation }: any) {
     );
   }
 
-  const { is_healthy, confidence, disease_info } = prediction;
+  const { is_healthy, confidence, disease_info, prediction_key } = prediction;
   const isSafe = is_healthy;
+  const fallbackParts = String(prediction_key || '').split('___');
+  const fallbackCropName = fallbackParts[0] || t('common.noData');
+  const fallbackDiseaseName = (fallbackParts[1] || '').replace(/_/g, ' ') || t('common.noData');
 
   // Use language-specific fields from the disease_info
-  const cropName = language === 'ar' ? (disease_info.crop_name_ar || disease_info.crop_name_en) : disease_info.crop_name_en;
-  const diseaseName = language === 'ar' ? (disease_info.disease_name_ar || disease_info.disease_name_en) : disease_info.disease_name_en;
-  const description = language === 'ar' ? (disease_info.description_ar || disease_info.description_en) : disease_info.description_en;
-  const treatment = language === 'ar' ? (disease_info.treatment_ar || disease_info.treatment_en) : disease_info.treatment_en;
+  const cropName = disease_info
+    ? (language === 'ar' ? (disease_info.crop_name_ar || disease_info.crop_name_en) : disease_info.crop_name_en)
+    : fallbackCropName;
+  const diseaseName = disease_info
+    ? (language === 'ar' ? (disease_info.disease_name_ar || disease_info.disease_name_en) : disease_info.disease_name_en)
+    : fallbackDiseaseName;
+  const description = disease_info
+    ? (language === 'ar' ? (disease_info.description_ar || disease_info.description_en) : disease_info.description_en)
+    : prediction_key;
+  const treatment = disease_info
+    ? (language === 'ar' ? (disease_info.treatment_ar || disease_info.treatment_en) : disease_info.treatment_en)
+    : '';
 
   return (
     <SafeAreaView style={styles.container}>

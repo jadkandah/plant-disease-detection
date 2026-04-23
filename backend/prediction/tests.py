@@ -9,13 +9,14 @@ import numpy as np
 from PIL import Image
 
 from .preprocessing.pipeline import preprocess_image
+from .preprocessing.leaf_check import is_leaf_color
 
 User = get_user_model()
 
 
-def make_test_image_file(name='leaf.jpg'):
+def make_test_image_file(name='leaf.jpg', color=(64, 160, 64)):
     buffer = BytesIO()
-    Image.new('RGB', (16, 16), color=(64, 160, 64)).save(buffer, format='JPEG')
+    Image.new('RGB', (16, 16), color=color).save(buffer, format='JPEG')
     return SimpleUploadedFile(name, buffer.getvalue(), content_type='image/jpeg')
 
 
@@ -105,3 +106,56 @@ class PreprocessingPipelineTest(TestCase):
         self.assertIsNotNone(image)
         mock_quality.assert_called_once()
         mock_extract.assert_not_called()
+
+    @patch('prediction.preprocessing.pipeline.extract_leaf')
+    @patch('prediction.preprocessing.pipeline.check_quality')
+    def test_non_leaf_image_is_rejected_after_quality_check(self, mock_quality, mock_extract):
+        mock_quality.return_value = (True, 'good')
+
+        image, status_message = preprocess_image(
+            make_test_image_file(name='not_leaf.jpg', color=(128, 128, 128)),
+            mode='offline',
+        )
+
+        self.assertIsNone(image)
+        self.assertEqual(status_message, 'Not a crop image')
+        mock_quality.assert_called_once()
+        mock_extract.assert_not_called()
+
+    @patch('prediction.preprocessing.pipeline.check_quality')
+    def test_leaf_image_passes_preprocessing(self, mock_quality):
+        mock_quality.return_value = (True, 'good')
+
+        image, status_message = preprocess_image(make_test_image_file(), mode='offline')
+
+        self.assertIsNotNone(image)
+        self.assertEqual(status_message, 'OK')
+        mock_quality.assert_called_once()
+
+
+class LeafColorCheckTest(TestCase):
+    """Tests for HSV color-based leaf detection."""
+
+    def test_green_leaf_color_is_detected(self):
+        image = np.zeros((16, 16, 3), dtype=np.uint8)
+        image[:, :] = (64, 160, 64)
+        is_leaf, leaf_ratio = is_leaf_color(image)
+
+        self.assertTrue(is_leaf)
+        self.assertGreater(leaf_ratio, 0.1)
+
+    def test_gray_non_leaf_color_is_rejected(self):
+        image = np.zeros((16, 16, 3), dtype=np.uint8)
+        image[:, :] = (128, 128, 128)
+        is_leaf, leaf_ratio = is_leaf_color(image)
+
+        self.assertFalse(is_leaf)
+        self.assertEqual(leaf_ratio, 0)
+
+    def test_warm_brown_non_leaf_color_is_rejected_without_green(self):
+        image = np.zeros((16, 16, 3), dtype=np.uint8)
+        image[:, :] = (35, 105, 150)
+        is_leaf, leaf_ratio = is_leaf_color(image)
+
+        self.assertFalse(is_leaf)
+        self.assertGreater(leaf_ratio, 0.1)

@@ -11,6 +11,7 @@ Flow:
 import cv2
 import numpy as np
 from .quality import check_quality
+from .leaf_check import is_leaf_color
 from .sam_utils import extract_leaf
 
 
@@ -36,6 +37,7 @@ def preprocess_image(file, mode="offline"):
         return None, "Rejected: corrupted — could not decode image"
 
     print(f"[pipeline] Image decoded: {image.shape}, mode={mode}")
+    print(f"[Mode] {mode}")
 
     # 1. Quality check
     print("[pipeline] Running quality check")
@@ -46,12 +48,21 @@ def preprocess_image(file, mode="offline"):
 
     print(f"[pipeline] Quality check PASSED")
 
-    # 2. Online mode → SAM leaf extraction (if available)
+    # 2. Leaf color check
+    print("[pipeline] Running leaf check")
+    is_leaf, leaf_ratio = is_leaf_color(image)
+    if not is_leaf:
+        print(f"[pipeline] Leaf check FAILED: leaf_ratio={leaf_ratio:.2f}")
+        return None, "Not a crop image"
+
+    print(f"[pipeline] Leaf check PASSED: leaf_ratio={leaf_ratio:.2f}")
+
+    # 3. Online mode → SAM leaf extraction (if available)
     if mode == "online":
-        print("[pipeline] Running SAM preprocessing")
+        print("[SAM] Running")
         image = extract_leaf(image)
     else:
-        print("[pipeline] Skipping SAM preprocessing (offline mode)")
+        print("[SAM] Skipped")
 
     # NOTE: We do NOT resize here. The inference transforms handle
     # resizing to the model's expected input size (512x512).

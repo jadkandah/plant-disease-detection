@@ -47,7 +47,8 @@
     "noAccess": "We need your permission to use the camera",
     "grantPermission": "Grant Permission",
     "uploadFailed": "Failed to upload image. Please try again.",
-    "captureFailed": "Failed to capture photo."
+    "captureFailed": "Failed to capture photo.",
+    "capturingImage": "Capturing image..."
   },
   "gallery": {
     "title": "Upload from Gallery",
@@ -58,6 +59,10 @@
     "saveForLater": "Save for Later",
     "offlineBanner": "📡 Offline — predictions will be queued",
     "uploadFailed": "Failed to analyze crop. Please check connection and try again.",
+    "notCropImage": "This doesn't look like a crop image. Please upload a clear photo of a crop leaf.",
+    "noImageSelected": "Please select an image before analyzing.",
+    "analyzingImage": "Analyzing image...",
+    "requestTimeout": "Analysis is taking too long. Please check that the backend is running and try again.",
     "savedOffline": "Saved Offline",
     "savedOfflineMsg": "No internet connection. Your prediction has been saved and will sync automatically when you reconnect."
   },
