@@ -7,12 +7,19 @@ import apiClient from '../../services/auth/apiClient';
 import { useNetworkStatus } from '../../services/network/useNetworkStatus';
 import { enqueueOfflinePrediction } from '../../services/offline/offlineQueue';
 import { useTranslation } from '../../store/LanguageContext';
+import { useModelMode } from '../../store/ModelModeContext';
+import { useWeatherRisk } from '../../services/weather/useWeatherRisk';
 
 export default function GalleryScreen({ navigation }: any) {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { isConnected } = useNetworkStatus();
   const { t, isRTL } = useTranslation();
+  const { isOnlineMode } = useModelMode();
+  const { weather } = useWeatherRisk();
+
+  // Effective online: both toggle is online AND device has internet
+  const effectiveOnline = isOnlineMode && isConnected;
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -28,8 +35,8 @@ export default function GalleryScreen({ navigation }: any) {
 
   const uploadImage = async () => {
     if (!imageUri) return;
-    console.log('[Gallery] uploadImage called, isConnected:', isConnected, 'platform:', Platform.OS);
-    if (!isConnected) {
+    console.log('[Gallery] uploadImage called, isConnected:', isConnected, 'isOnlineMode:', isOnlineMode, 'platform:', Platform.OS);
+    if (!effectiveOnline) {
       const id = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       await enqueueOfflinePrediction({ id, imageUri, sourceType: 'gallery', timestamp: new Date().toISOString() });
       Alert.alert(t('gallery.savedOffline'), t('gallery.savedOfflineMsg'), [{ text: t('common.ok'), onPress: () => navigation.goBack() }]);
@@ -56,6 +63,17 @@ export default function GalleryScreen({ navigation }: any) {
       }
 
       formData.append('source_type', 'gallery');
+
+      // Attach weather data for enhanced online prediction
+      if (weather) {
+        formData.append('temperature', String(weather.temperature));
+        formData.append('humidity', String(weather.humidity));
+        formData.append('wind_speed', String(weather.windSpeed));
+        formData.append('weather_description', weather.description);
+        formData.append('weather_risk_level', weather.riskLevel);
+        formData.append('city_name', weather.cityName);
+      }
+
       // On web, do NOT set Content-Type manually — browser must add the multipart boundary
       const headers = Platform.OS === 'web' ? {} : { 'Content-Type': 'multipart/form-data' };
       const res = await apiClient.post('/predict/', formData, { headers });
@@ -81,7 +99,7 @@ export default function GalleryScreen({ navigation }: any) {
       </View>
 
       <View style={styles.content}>
-        {!isConnected && (
+        {!effectiveOnline && (
           <View style={styles.offlineBanner}>
             <Text style={styles.offlineText}>{t('gallery.offlineBanner')}</Text>
           </View>
@@ -99,7 +117,7 @@ export default function GalleryScreen({ navigation }: any) {
         <Text style={styles.buttonSecondaryText}>{imageUri ? t('gallery.changePhoto') : t('gallery.selectPhoto')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={[styles.buttonPrimary, (!imageUri || isProcessing) && styles.disabledButton]} onPress={uploadImage} disabled={!imageUri || isProcessing}>
-        {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.buttonPrimaryText}>{isConnected ? t('gallery.analyzeCrop') : t('gallery.saveForLater')}</Text>}
+        {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.buttonPrimaryText}>{effectiveOnline ? t('gallery.analyzeCrop') : t('gallery.saveForLater')}</Text>}
       </TouchableOpacity>
       </View>
     </SafeAreaView>

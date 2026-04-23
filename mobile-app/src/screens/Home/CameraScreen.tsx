@@ -6,6 +6,8 @@ import apiClient from '../../services/auth/apiClient';
 import { useNetworkStatus } from '../../services/network/useNetworkStatus';
 import { enqueueOfflinePrediction } from '../../services/offline/offlineQueue';
 import { useTranslation } from '../../store/LanguageContext';
+import { useModelMode } from '../../store/ModelModeContext';
+import { useWeatherRisk } from '../../services/weather/useWeatherRisk';
 
 export default function CameraScreen({ navigation }: any) {
   const [facing, setFacing] = useState<'front' | 'back'>('back');
@@ -14,6 +16,11 @@ export default function CameraScreen({ navigation }: any) {
   const cameraRef = useRef<CameraView>(null);
   const { isConnected } = useNetworkStatus();
   const { t } = useTranslation();
+  const { isOnlineMode } = useModelMode();
+  const { weather } = useWeatherRisk();
+
+  // Effective online: both toggle is online AND device has internet
+  const effectiveOnline = isOnlineMode && isConnected;
 
   if (!permission) return <View style={styles.container} />;
 
@@ -41,8 +48,8 @@ export default function CameraScreen({ navigation }: any) {
           return;
         }
 
-        // If offline, queue
-        if (!isConnected) {
+        // If offline mode or no connection, queue
+        if (!effectiveOnline) {
           const id = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           await enqueueOfflinePrediction({ id, imageUri: photo.uri, sourceType: 'camera', timestamp: new Date().toISOString() });
           Alert.alert(t('gallery.savedOffline'), t('gallery.savedOfflineMsg'), [{ text: t('common.ok'), onPress: () => navigation.goBack() }]);
@@ -64,6 +71,17 @@ export default function CameraScreen({ navigation }: any) {
         }
 
         formData.append('source_type', 'camera');
+
+        // Attach weather data for enhanced online prediction
+        if (weather) {
+          formData.append('temperature', String(weather.temperature));
+          formData.append('humidity', String(weather.humidity));
+          formData.append('wind_speed', String(weather.windSpeed));
+          formData.append('weather_description', weather.description);
+          formData.append('weather_risk_level', weather.riskLevel);
+          formData.append('city_name', weather.cityName);
+        }
+
         const headers = Platform.OS === 'web' ? {} : { 'Content-Type': 'multipart/form-data' };
         const response = await apiClient.post('/predict/', formData, { headers });
         navigation.navigate('Result', { prediction: response.data });
@@ -82,7 +100,7 @@ export default function CameraScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
-        {!isConnected && (
+        {!effectiveOnline && (
           <View style={styles.offlineBanner}>
             <Text style={styles.offlineText}>{t('gallery.offlineBanner')}</Text>
           </View>

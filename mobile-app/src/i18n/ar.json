@@ -38,7 +38,9 @@
     "tipText": "تأكد من ري محاصيلك في الصباح الباكر لمنع التبخر.",
     "highRisk": "خطر عالي",
     "mediumRisk": "خطر متوسط",
-    "lowRisk": "خطر منخفض"
+    "lowRisk": "خطر منخفض",
+    "modelOnline": "🟢 النموذج متصل",
+    "modelOffline": "🔴 النموذج غير متصل"
   },
   "camera": {
     "title": "التقاط صورة",
@@ -92,6 +94,11 @@
     "pushNotifications": "الإشعارات",
     "offlineMode": "وضع عدم الاتصال",
     "language": "اللغة",
+    "modelMode": "وضع النموذج",
+    "onlineModel": "متصل",
+    "offlineModel": "غير متصل",
+    "onlineModelDesc": "يستخدم الذكاء الاصطناعي السحابي مع بيانات الطقس لأفضل دقة",
+    "offlineModelDesc": "يتم حفظ التنبؤات محلياً — تتم المزامنة عند الاتصال",
     "about": "حول التطبيق",
     "helpSupport": "المساعدة والدعم",
     "version": "كشف أمراض النباتات الإصدار 1.0",

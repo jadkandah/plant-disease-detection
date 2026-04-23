@@ -20,6 +20,18 @@ class PredictView(generics.CreateAPIView):
         
         image_file = serializer.validated_data['image']
         source_type = serializer.validated_data.get('source_type', 'camera')
+
+        # Extract optional weather context
+        weather_temperature = serializer.validated_data.get('temperature')
+        weather_humidity = serializer.validated_data.get('humidity')
+        weather_wind_speed = serializer.validated_data.get('wind_speed')
+        weather_description = serializer.validated_data.get('weather_description', '')
+        weather_risk_level = serializer.validated_data.get('weather_risk_level', '')
+        weather_city_name = serializer.validated_data.get('city_name', '')
+
+        if weather_temperature is not None:
+            print(f"[predict] Weather context: {weather_temperature}°C, {weather_humidity}% humidity, "
+                  f"wind {weather_wind_speed} m/s, {weather_description}, risk={weather_risk_level}, city={weather_city_name}")
         
         # 2. Run REAL AI inference using the trained ResNet-50 model
         try:
@@ -39,7 +51,7 @@ class PredictView(generics.CreateAPIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        # 4. Save to prediction history
+        # 4. Save to prediction history (including weather context)
         # Re-open the image file for saving (seek back to start)
         image_file.seek(0)
         PredictionRecord.objects.create(
@@ -52,14 +64,32 @@ class PredictView(generics.CreateAPIView):
             is_healthy=predicted_disease.health_status == 'healthy',
             source_type=source_type,
             sync_status='synced',
+            weather_risk_level=weather_risk_level or None,
+            weather_temperature=weather_temperature,
+            weather_humidity=weather_humidity,
+            weather_wind_speed=weather_wind_speed,
+            weather_description=weather_description or None,
+            weather_city_name=weather_city_name or None,
         )
 
-        # 5. Return the result
+        # 5. Build weather context for response
+        weather_context = None
+        if weather_temperature is not None:
+            weather_context = {
+                "temperature": weather_temperature,
+                "humidity": weather_humidity,
+                "wind_speed": weather_wind_speed,
+                "description": weather_description,
+                "risk_level": weather_risk_level,
+                "city_name": weather_city_name,
+            }
+
+        # 6. Return the result
         return Response({
             "success": True,
             "prediction_key": predicted_disease.class_key,
             "confidence": confidence,
             "is_healthy": predicted_disease.health_status == 'healthy',
-            "disease_info": DiseaseInfoSerializer(predicted_disease).data
+            "disease_info": DiseaseInfoSerializer(predicted_disease).data,
+            "weather_context": weather_context,
         }, status=status.HTTP_200_OK)
-

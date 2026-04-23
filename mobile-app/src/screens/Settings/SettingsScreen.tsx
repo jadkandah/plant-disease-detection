@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronRight, HelpCircle, Info } from 'lucide-react-native';
+import { ChevronRight, HelpCircle, Info, Cloud, CloudOff } from 'lucide-react-native';
 import { useTranslation } from '../../store/LanguageContext';
+import { useModelMode } from '../../store/ModelModeContext';
 
 export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { t, language, setLanguage, isRTL } = useTranslation();
+  const { modelMode, setModelMode, isOnlineMode } = useModelMode();
 
   const handleHelpSupport = () => {
     Alert.alert(
@@ -26,6 +28,7 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.container}>
       <Text style={[styles.title, isRTL && styles.rtlText]}>{t('settings.title')}</Text>
       <ScrollView>
+        {/* Push Notifications */}
         <View style={[styles.settingRow, isRTL && styles.rtlRow]}>
           <Text style={styles.settingLabel}>{t('settings.pushNotifications')}</Text>
           <Switch
@@ -36,6 +39,40 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* Model Mode Toggle — Online / Offline */}
+        <View style={styles.modelModeCard}>
+          <View style={[styles.modelModeHeader, isRTL && styles.rtlRow]}>
+            {isOnlineMode ? <Cloud color="#2E7D32" size={22} /> : <CloudOff color="#C62828" size={22} />}
+            <Text style={[styles.modelModeTitle, isRTL && { marginRight: 10, marginLeft: 0 }]}>
+              {t('settings.modelMode')}
+            </Text>
+          </View>
+          <Text style={[styles.modelModeDesc, isRTL && styles.rtlText]}>
+            {isOnlineMode ? t('settings.onlineModelDesc') : t('settings.offlineModelDesc')}
+          </Text>
+          <View style={[styles.modelToggle, isRTL && styles.rtlRow]}>
+            <TouchableOpacity
+              style={[styles.modeBtn, isOnlineMode && styles.modeBtnActiveOnline]}
+              onPress={() => setModelMode('online')}
+            >
+              <Cloud color={isOnlineMode ? 'white' : '#666'} size={16} />
+              <Text style={[styles.modeBtnText, isOnlineMode && styles.modeBtnTextActive]}>
+                {t('settings.onlineModel')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeBtn, !isOnlineMode && styles.modeBtnActiveOffline]}
+              onPress={() => setModelMode('offline')}
+            >
+              <CloudOff color={!isOnlineMode ? 'white' : '#666'} size={16} />
+              <Text style={[styles.modeBtnText, !isOnlineMode && styles.modeBtnTextActive]}>
+                {t('settings.offlineModel')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Language */}
         <View style={[styles.settingRow, isRTL && styles.rtlRow]}>
           <Text style={styles.settingLabel}>{t('settings.language')}</Text>
           <View style={[styles.languageToggle, isRTL && styles.rtlRow]}>
@@ -90,6 +127,69 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
   settingLabel: { fontSize: 16, color: '#333' },
+
+  // Model Mode Card
+  modelModeCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modelModeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modelModeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 10,
+  },
+  modelModeDesc: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 14,
+    lineHeight: 18,
+  },
+  modelToggle: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#ddd',
+    backgroundColor: '#FAFAFA',
+  },
+  modeBtnActiveOnline: {
+    backgroundColor: '#2E7D32',
+    borderColor: '#2E7D32',
+  },
+  modeBtnActiveOffline: {
+    backgroundColor: '#C62828',
+    borderColor: '#C62828',
+  },
+  modeBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  modeBtnTextActive: {
+    color: 'white',
+  },
+
   languageToggle: { flexDirection: 'row', gap: 8 },
   langBtn: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 6, borderWidth: 1, borderColor: '#ccc' },
   langBtnActive: { backgroundColor: '#2E7D32', borderColor: '#2E7D32' },

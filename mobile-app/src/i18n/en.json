@@ -38,7 +38,9 @@
     "tipText": "Ensure to water your crops early morning to prevent evaporation.",
     "highRisk": "HIGH RISK",
     "mediumRisk": "MEDIUM RISK",
-    "lowRisk": "LOW RISK"
+    "lowRisk": "LOW RISK",
+    "modelOnline": "🟢 Online Model",
+    "modelOffline": "🔴 Offline Model"
   },
   "camera": {
     "title": "Take Photo",
@@ -92,6 +94,11 @@
     "pushNotifications": "Push Notifications",
     "offlineMode": "Offline Mode",
     "language": "Language",
+    "modelMode": "Model Mode",
+    "onlineModel": "Online",
+    "offlineModel": "Offline",
+    "onlineModelDesc": "Uses cloud AI with weather context for best accuracy",
+    "offlineModelDesc": "Predictions queued locally — syncs when back online",
     "about": "About App",
     "helpSupport": "Help & Support",
     "version": "Plant Disease Detection v1.0",

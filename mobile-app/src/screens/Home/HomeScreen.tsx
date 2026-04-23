@@ -1,10 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { HeartPulse, Camera, Image as ImageIcon, CloudRain, Shield, AlertTriangle, Wifi, WifiOff } from 'lucide-react-native';
+import { HeartPulse, Camera, Image as ImageIcon, CloudRain, Shield, AlertTriangle, Wifi, WifiOff, Cloud, CloudOff } from 'lucide-react-native';
 import { useWeatherRisk } from '../../services/weather/useWeatherRisk';
 import { useTranslation } from '../../store/LanguageContext';
 import { useNetworkStatus } from '../../services/network/useNetworkStatus';
+import { useModelMode } from '../../store/ModelModeContext';
 
 const riskColors = {
   low: { bg: '#E8F5E9', border: '#C8E6C9', text: '#2E7D32', icon: Shield },
@@ -16,6 +17,7 @@ export default function HomeScreen({ navigation }: any) {
   const { weather, loading: weatherLoading } = useWeatherRisk();
   const { t, isRTL } = useTranslation();
   const { isConnected } = useNetworkStatus();
+  const { isOnlineMode } = useModelMode();
 
   const risk = weather ? riskColors[weather.riskLevel] : riskColors.low;
   const RiskIcon = risk.icon;
@@ -34,6 +36,14 @@ export default function HomeScreen({ navigation }: any) {
           {isConnected ? <Wifi color="#2E7D32" size={16} /> : <WifiOff color="#C62828" size={16} />}
           <Text style={[styles.connectionText, { color: isConnected ? '#2E7D32' : '#C62828' }]}>
             {isConnected ? (isRTL ? 'متصل بالإنترنت' : 'Connected to Internet') : (isRTL ? 'غير متصل بالإنترنت' : 'No Internet Connection')}
+          </Text>
+        </View>
+
+        {/* Model Mode Indicator */}
+        <View style={[styles.connectionBar, isOnlineMode ? styles.onlineModeBar : styles.offlineModeBar, isRTL && styles.rtlRow]}>
+          {isOnlineMode ? <Cloud color="#1565C0" size={16} /> : <CloudOff color="#E65100" size={16} />}
+          <Text style={[styles.connectionText, { color: isOnlineMode ? '#1565C0' : '#E65100' }]}>
+            {isOnlineMode ? t('home.modelOnline') : t('home.modelOffline')}
           </Text>
         </View>
 
@@ -129,6 +139,8 @@ const styles = StyleSheet.create({
   },
   connectedBar: { backgroundColor: '#E8F5E9' },
   disconnectedBar: { backgroundColor: '#FFEBEE' },
+  onlineModeBar: { backgroundColor: '#E3F2FD' },
+  offlineModeBar: { backgroundColor: '#FFF3E0' },
   connectionText: { fontSize: 13, fontWeight: '600' },
   header: { marginBottom: 20 },
   greeting: { fontSize: 16, color: '#666' },

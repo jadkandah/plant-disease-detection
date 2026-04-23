@@ -9,6 +9,7 @@ import { useTranslation } from './src/store/LanguageContext';
 
 import { AuthProvider, AuthContext } from './src/store/AuthContext';
 import { LanguageProvider } from './src/store/LanguageContext';
+import { ModelModeProvider } from './src/store/ModelModeContext';
 import { LoginScreen } from './src/screens/Auth/LoginScreen';
 import { SignUpScreen } from './src/screens/Auth/SignUpScreen';
 
@@ -106,9 +107,11 @@ const Navigation = () => {
 export default function App() {
   return (
     <LanguageProvider>
-      <AuthProvider>
-        <Navigation />
-      </AuthProvider>
+      <ModelModeProvider>
+        <AuthProvider>
+          <Navigation />
+        </AuthProvider>
+      </ModelModeProvider>
     </LanguageProvider>
   );
 }
