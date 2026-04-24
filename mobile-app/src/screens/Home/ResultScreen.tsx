@@ -54,7 +54,7 @@ export default function ResultScreen({ route, navigation }: any) {
           <Text style={[styles.statusTitle, { color: isSafe ? '#2E7D32' : '#D32F2F' }]}>
             {isSafe ? t('result.healthyCrop') : t('result.diseaseDetected')}
           </Text>
-          <Text style={styles.statusSubtitle}>{t('result.confidence')}: {(confidence * 100).toFixed(1)}%</Text>
+
         </View>
 
         <View style={styles.infoSection}>
