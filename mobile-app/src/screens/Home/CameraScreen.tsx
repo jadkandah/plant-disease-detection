@@ -4,10 +4,10 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { RefreshCw, X } from 'lucide-react-native';
 import apiClient from '../../services/auth/apiClient';
 import { useNetworkStatus } from '../../services/network/useNetworkStatus';
-import { enqueueOfflinePrediction } from '../../services/offline/offlineQueue';
+import { enqueueOfflineResult } from '../../services/offline/offlineQueue';
+import { predictOffline } from '../../services/offline/localInference';
 import { useTranslation } from '../../store/LanguageContext';
 import { useModelMode } from '../../store/ModelModeContext';
-import { useWeatherRisk } from '../../services/weather/useWeatherRisk';
 
 export default function CameraScreen({ navigation }: any) {
   const [facing, setFacing] = useState<'front' | 'back'>('back');
@@ -19,7 +19,6 @@ export default function CameraScreen({ navigation }: any) {
   const { isConnected } = useNetworkStatus();
   const { t } = useTranslation();
   const { isOnlineMode } = useModelMode();
-  const { weather } = useWeatherRisk();
 
   const getUploadErrorMessage = (error: any) => {
     const backendMessage = error?.response?.data?.detail || error?.response?.data?.error || error?.message;
@@ -32,9 +31,6 @@ export default function CameraScreen({ navigation }: any) {
     }
     return message || t('camera.uploadFailed');
   };
-
-  // The backend handles both online (ResNet) and offline (MobileNet) modes.
-  // We only queue for later if there is NO physical internet connection.
 
   if (!permission) return <View style={styles.container} />;
 
@@ -66,11 +62,23 @@ export default function CameraScreen({ navigation }: any) {
           return;
         }
 
-        // If no internet connection, queue locally
-        if (!isConnected) {
+        if (!isConnected || !isOnlineMode) {
+          setStatusMessage(t('gallery.analyzingImage'));
+          const prediction = await predictOffline(photo.uri);
           const id = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          await enqueueOfflinePrediction({ id, imageUri: photo.uri, sourceType: 'camera', timestamp: new Date().toISOString() });
-          Alert.alert(t('gallery.savedOffline'), t('gallery.savedOfflineMsg'), [{ text: t('common.ok'), onPress: () => navigation.goBack() }]);
+          await enqueueOfflineResult({
+            id,
+            predictionKey: prediction.prediction_key,
+            sourceType: 'camera',
+            predictedAt: new Date().toISOString(),
+            cropName: prediction.disease_info.crop_name_en,
+            diseaseNameEn: prediction.disease_info.disease_name_en,
+            diseaseNameAr: prediction.disease_info.disease_name_ar,
+            confidence: prediction.confidence,
+            isHealthy: prediction.is_healthy,
+          });
+          setStatusMessage(null);
+          navigation.navigate('Result', { prediction });
           return;
         }
 
@@ -91,16 +99,6 @@ export default function CameraScreen({ navigation }: any) {
 
         formData.append('source_type', 'camera');
         formData.append('mode', isOnlineMode ? 'online' : 'offline');
-
-        // Attach weather data for enhanced online prediction
-        if (weather) {
-          formData.append('temperature', String(weather.temperature));
-          formData.append('humidity', String(weather.humidity));
-          formData.append('wind_speed', String(weather.windSpeed));
-          formData.append('weather_description', weather.description);
-          formData.append('weather_risk_level', weather.riskLevel);
-          formData.append('city_name', weather.cityName);
-        }
 
         const response = await apiClient.post('/predict/', formData);
         setStatusMessage(null);
@@ -123,7 +121,7 @@ export default function CameraScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
-        {!isConnected && (
+        {(!isConnected || !isOnlineMode) && (
           <View style={styles.offlineBanner}>
             <Text style={styles.offlineText}>{t('gallery.offlineBanner')}</Text>
           </View>

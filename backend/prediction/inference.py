@@ -178,17 +178,13 @@ def _load_online_model():
     return _online_model
 
 
-def predict_from_array(image_array: np.ndarray, mode: str = "offline",
-                       temperature=None, humidity=None, wind_speed=None) -> tuple[str, float]:
+def predict_from_array(image_array: np.ndarray, mode: str = "offline") -> tuple[str, float]:
     """
     Run inference on a preprocessed numpy array (BGR format from cv2).
 
     Args:
         image_array: BGR numpy array from cv2/preprocessing pipeline
         mode: "online" (ResNet50 image-only 512) or "offline" (MobileNetV3-Small)
-        temperature: Accepted for API compatibility/weather history; not used by image-only inference
-        humidity: Accepted for API compatibility/weather history; not used by image-only inference
-        wind_speed: Accepted for API compatibility/weather history; not used by image-only inference
 
     Returns:
         (class_key, confidence)
@@ -230,7 +226,7 @@ def predict_from_array(image_array: np.ndarray, mode: str = "offline",
     return class_key, conf
 
 
-def predict_image(image_file, mode: str = "offline", **weather_kwargs) -> tuple[str, float]:
+def predict_image(image_file, mode: str = "offline") -> tuple[str, float]:
     """
     Run inference on a Django UploadedFile or file-like object.
     Backward-compatible wrapper around predict_from_array.
@@ -238,4 +234,4 @@ def predict_image(image_file, mode: str = "offline", **weather_kwargs) -> tuple[
     image_bytes = image_file.read()
     np_arr = np.frombuffer(image_bytes, np.uint8)
     image_array = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    return predict_from_array(image_array, mode=mode, **weather_kwargs)
+    return predict_from_array(image_array, mode=mode)

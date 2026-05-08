@@ -24,18 +24,6 @@ class PredictView(generics.CreateAPIView):
         source_type = serializer.validated_data.get('source_type', 'camera')
         mode = serializer.validated_data.get('mode', 'offline')
 
-        # Extract optional weather context
-        weather_temperature = serializer.validated_data.get('temperature')
-        weather_humidity = serializer.validated_data.get('humidity')
-        weather_wind_speed = serializer.validated_data.get('wind_speed')
-        weather_description = serializer.validated_data.get('weather_description', '')
-        weather_risk_level = serializer.validated_data.get('weather_risk_level', '')
-        weather_city_name = serializer.validated_data.get('city_name', '')
-
-        if weather_temperature is not None:
-            print(f"[predict] Weather context: {weather_temperature}°C, {weather_humidity}% humidity, "
-                  f"wind {weather_wind_speed} m/s, {weather_description}, risk={weather_risk_level}, city={weather_city_name}")
-
         # ──────────────────────────────────────────
         # 2. Preprocessing pipeline (quality check + optional SAM)
         #
@@ -52,14 +40,10 @@ class PredictView(generics.CreateAPIView):
             )
 
         # 3. Run AI inference on the preprocessed image.
-        #    Weather values are preserved as request context/history, not model inputs.
         try:
             predicted_class_key, confidence = predict_from_array(
                 preprocessed_image,
                 mode=mode,
-                temperature=weather_temperature,
-                humidity=weather_humidity,
-                wind_speed=weather_wind_speed,
             )
         except Exception as e:
             import traceback
@@ -82,10 +66,9 @@ class PredictView(generics.CreateAPIView):
                 "confidence": confidence,
                 "is_healthy": "healthy" in predicted_class_key.lower(),
                 "disease_info": None,
-                "weather_context": None,
             }, status=status.HTTP_200_OK)
 
-        # 5. Save to prediction history (including weather context)
+        # 5. Save to prediction history
         image_file.seek(0)
         PredictionRecord.objects.create(
             user=request.user,
@@ -97,27 +80,9 @@ class PredictView(generics.CreateAPIView):
             is_healthy=predicted_disease.health_status == 'healthy',
             source_type=source_type,
             sync_status='synced',
-            weather_risk_level=weather_risk_level or None,
-            weather_temperature=weather_temperature,
-            weather_humidity=weather_humidity,
-            weather_wind_speed=weather_wind_speed,
-            weather_description=weather_description or None,
-            weather_city_name=weather_city_name or None,
         )
 
-        # 6. Build weather context for response
-        weather_context = None
-        if weather_temperature is not None:
-            weather_context = {
-                "temperature": weather_temperature,
-                "humidity": weather_humidity,
-                "wind_speed": weather_wind_speed,
-                "description": weather_description,
-                "risk_level": weather_risk_level,
-                "city_name": weather_city_name,
-            }
-
-        # 7. Return the result
+        # 6. Return the result
         return Response({
             "success": True,
             "mode": mode,
@@ -125,5 +90,4 @@ class PredictView(generics.CreateAPIView):
             "confidence": confidence,
             "is_healthy": predicted_disease.health_status == 'healthy',
             "disease_info": DiseaseInfoSerializer(predicted_disease).data,
-            "weather_context": weather_context,
         }, status=status.HTTP_200_OK)

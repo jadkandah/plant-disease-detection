@@ -53,29 +53,3 @@ class PredictionRecordModelTest(TestCase):
         predictions = self.user.predictions.all()
         self.assertEqual(predictions.count(), 1)
         self.assertEqual(predictions.first().crop_name, 'Tomato')
-
-    def test_weather_context_nullable(self):
-        """Weather fields default to null."""
-        self.assertIsNone(self.record.weather_temperature)
-        self.assertIsNone(self.record.weather_humidity)
-        self.assertIsNone(self.record.weather_risk_level)
-
-    def test_weather_context_saved(self):
-        """Weather context is saved correctly."""
-        record = PredictionRecord.objects.create(
-            user=self.user,
-            crop_name='Wheat',
-            disease_name_en='Yellow Rust',
-            disease_name_ar='الصدأ الأصفر',
-            confidence=0.87,
-            is_healthy=False,
-            weather_temperature=28.0,
-            weather_humidity=75.0,
-            weather_wind_speed=3.5,
-            weather_risk_level='medium',
-            weather_description='Partly cloudy',
-            weather_city_name='Amman',
-        )
-        self.assertEqual(record.weather_temperature, 28.0)
-        self.assertEqual(record.weather_city_name, 'Amman')
-        self.assertEqual(record.weather_risk_level, 'medium')

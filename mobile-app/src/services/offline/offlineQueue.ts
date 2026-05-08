@@ -3,33 +3,31 @@ import apiClient from '../auth/apiClient';
 
 const OFFLINE_QUEUE_KEY = 'offline_prediction_queue';
 
-export interface OfflinePrediction {
-  id: string; // UUID generated client-side
-  imageUri: string;
+export interface OfflinePredictionResult {
+  id: string;
+  predictionKey: string;
   sourceType: 'camera' | 'gallery';
-  timestamp: string;
-  // After local mock result (optional)
-  mockResult?: {
-    crop_name: string;
-    disease_name: string;
-    confidence: number;
-    is_healthy: boolean;
-  };
+  predictedAt: string;
+  cropName: string;
+  diseaseNameEn: string;
+  diseaseNameAr: string;
+  confidence: number;
+  isHealthy: boolean;
 }
 
 /**
- * Add a prediction request to the offline queue.
+ * Add a locally inferred result to the offline queue.
  */
-export async function enqueueOfflinePrediction(prediction: OfflinePrediction): Promise<void> {
+export async function enqueueOfflineResult(prediction: OfflinePredictionResult): Promise<void> {
   const queue = await getOfflineQueue();
   queue.push(prediction);
   await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
 }
 
 /**
- * Get all pending offline predictions.
+ * Get all pending offline prediction results.
  */
-export async function getOfflineQueue(): Promise<OfflinePrediction[]> {
+export async function getOfflineQueue(): Promise<OfflinePredictionResult[]> {
   try {
     const raw = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -55,37 +53,29 @@ export async function removeFromQueue(id: string): Promise<void> {
 }
 
 /**
- * Attempt to sync all queued offline predictions to the server.
+ * Attempt to sync all queued local results to the server.
  * Returns the number of successfully synced items.
  */
 export async function syncOfflineQueue(): Promise<number> {
   const queue = await getOfflineQueue();
   if (queue.length === 0) return 0;
 
-  let syncedCount = 0;
+  const records = queue.map((item) => ({
+    crop_name: item.cropName,
+    disease_name_en: item.diseaseNameEn,
+    disease_name_ar: item.diseaseNameAr,
+    confidence: item.confidence,
+    is_healthy: item.isHealthy,
+    source_type: item.sourceType,
+    sync_status: 'synced',
+  }));
 
-  for (const item of queue) {
-    try {
-      const formData = new FormData();
-      const filename = item.imageUri.split('/').pop() || 'offline.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const fileType = match ? `image/${match[1]}` : 'image/jpeg';
-
-      formData.append('image', { uri: item.imageUri, name: filename, type: fileType } as any);
-      formData.append('source_type', item.sourceType);
-      formData.append('mode', 'offline');
-
-      await apiClient.post('/predict/', formData);
-
-      // Remove successfully synced item
-      await removeFromQueue(item.id);
-      syncedCount++;
-    } catch (error) {
-      // If any item fails, stop syncing (server may be down)
-      console.log(`Failed to sync prediction ${item.id}:`, error);
-      break;
-    }
+  try {
+    await apiClient.post('/history/sync/', { records });
+    await clearOfflineQueue();
+    return queue.length;
+  } catch (error) {
+    console.log('Failed to sync offline results:', error);
+    return 0;
   }
-
-  return syncedCount;
 }

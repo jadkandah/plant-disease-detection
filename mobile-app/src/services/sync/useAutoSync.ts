@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus, Alert } from 'react-native';
 import { useNetworkStatus } from '../network/useNetworkStatus';
 import { syncOfflineQueue, getOfflineQueue } from '../offline/offlineQueue';
+import { useModelMode } from '../../store/ModelModeContext';
 
 /**
  * Hook that automatically syncs offline predictions when the device
@@ -9,28 +10,35 @@ import { syncOfflineQueue, getOfflineQueue } from '../offline/offlineQueue';
  */
 export function useAutoSync() {
   const { isConnected } = useNetworkStatus();
+  const { isOnlineMode } = useModelMode();
   const prevConnected = useRef<boolean>(isConnected);
 
   // Sync when network reconnects
   useEffect(() => {
-    if (isConnected && !prevConnected.current) {
-      // Just came back online
+    if (isConnected && isOnlineMode && !prevConnected.current) {
       attemptSync();
     }
     prevConnected.current = isConnected;
-  }, [isConnected]);
+  }, [isConnected, isOnlineMode]);
+
+  // Sync when the tester switches back from local/offline mode.
+  useEffect(() => {
+    if (isConnected && isOnlineMode) {
+      attemptSync();
+    }
+  }, [isConnected, isOnlineMode]);
 
   // Sync when app comes to foreground
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
-      if (nextState === 'active' && isConnected) {
+      if (nextState === 'active' && isConnected && isOnlineMode) {
         attemptSync();
       }
     };
 
     const sub = AppState.addEventListener('change', handleAppStateChange);
     return () => sub.remove();
-  }, [isConnected]);
+  }, [isConnected, isOnlineMode]);
 
   const attemptSync = async () => {
     try {

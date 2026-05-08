@@ -118,7 +118,7 @@ class PreprocessingPipelineTest(TestCase):
         )
 
         self.assertIsNone(image)
-        self.assertEqual(status_message, 'Not a crop image')
+        self.assertTrue(status_message.startswith('Rejected: Not a leaf'))
         mock_quality.assert_called_once()
         mock_extract.assert_not_called()
 

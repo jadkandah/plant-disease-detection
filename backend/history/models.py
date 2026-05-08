@@ -23,13 +23,5 @@ class PredictionRecord(models.Model):
         default='camera'
     )
     
-    # Optional weather context (sent from the mobile app during online predictions)
-    weather_risk_level = models.CharField(max_length=20, blank=True, null=True)
-    weather_temperature = models.FloatField(blank=True, null=True)
-    weather_humidity = models.FloatField(blank=True, null=True)
-    weather_wind_speed = models.FloatField(blank=True, null=True)
-    weather_description = models.CharField(max_length=100, blank=True, null=True)
-    weather_city_name = models.CharField(max_length=100, blank=True, null=True)
-
     def __str__(self):
         return f"{self.user.email} - {self.crop_name} - {self.disease_name_en}"

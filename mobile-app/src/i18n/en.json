@@ -57,14 +57,14 @@
     "changePhoto": "Change Photo",
     "analyzeCrop": "Analyze Crop",
     "saveForLater": "Save for Later",
-    "offlineBanner": "📡 Offline — predictions will be queued",
+    "offlineBanner": "Offline/local mode — result will sync later",
     "uploadFailed": "Failed to analyze crop. Please check connection and try again.",
     "notCropImage": "This doesn't look like a crop image. Please upload a clear photo of a crop leaf.",
     "noImageSelected": "Please select an image before analyzing.",
     "analyzingImage": "Analyzing image...",
     "requestTimeout": "Analysis is taking too long. Please check that the backend is running and try again.",
     "savedOffline": "Saved Offline",
-    "savedOfflineMsg": "No internet connection. Your prediction has been saved and will sync automatically when you reconnect."
+    "savedOfflineMsg": "Your local result has been saved and will sync automatically when online mode is available."
   },
   "result": {
     "title": "Analysis Result",
@@ -102,8 +102,8 @@
     "modelMode": "Model Mode",
     "onlineModel": "Online",
     "offlineModel": "Offline",
-    "onlineModelDesc": "Uses cloud AI with weather context for best accuracy",
-    "offlineModelDesc": "Predictions queued locally — syncs when back online",
+    "onlineModelDesc": "Uses the backend model when connected",
+    "offlineModelDesc": "Uses the local mobile model and syncs results later",
     "about": "About App",
     "helpSupport": "Help & Support",
     "version": "Plant Disease Detection v1.0",
@@ -117,12 +117,6 @@
     "healthyCrops": "Healthy Crops",
     "recentPredictions": "Recent Predictions",
     "noPredictions": "No predictions recorded yet."
-  },
-  "weather": {
-    "highRiskMsg": "High humidity & warm temps increase fungal disease risk. Inspect crops closely.",
-    "mediumRiskMsg": "Moderate conditions. Monitor your crops for early signs of disease.",
-    "lowRiskMsg": "Current weather conditions are favorable for healthy crops.",
-    "unavailable": "Weather data unavailable"
   },
   "sync": {
     "syncComplete": "Sync Complete",

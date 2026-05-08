@@ -7,11 +7,3 @@ class PredictionRequestSerializer(serializers.Serializer):
 
     # Model mode: online uses SAM + backend ResNet50; offline uses the lightweight mobile model.
     mode = serializers.ChoiceField(choices=['online', 'offline'], required=False, default='offline')
-
-    # Optional weather context sent from the mobile app
-    temperature = serializers.FloatField(required=False, allow_null=True, default=None)
-    humidity = serializers.FloatField(required=False, allow_null=True, default=None)
-    wind_speed = serializers.FloatField(required=False, allow_null=True, default=None)
-    weather_description = serializers.CharField(required=False, allow_blank=True, default='')
-    weather_risk_level = serializers.CharField(required=False, allow_blank=True, default='')
-    city_name = serializers.CharField(required=False, allow_blank=True, default='')

@@ -8,7 +8,7 @@ class PredictionRecordAdmin(admin.ModelAdmin):
         'user', 'crop_name', 'disease_name_en', 'confidence',
         'is_healthy', 'source_type', 'sync_status', 'predicted_at',
     )
-    list_filter = ('is_healthy', 'source_type', 'sync_status', 'crop_name', 'weather_risk_level')
+    list_filter = ('is_healthy', 'source_type', 'sync_status', 'crop_name')
     search_fields = ('user__email', 'crop_name', 'disease_name_en', 'disease_name_ar')
     ordering = ('-predicted_at',)
     readonly_fields = ('predicted_at',)
@@ -21,10 +21,5 @@ class PredictionRecordAdmin(admin.ModelAdmin):
         }),
         ('Source & Sync', {
             'fields': ('source_type', 'sync_status'),
-        }),
-        ('Weather Context', {
-            'fields': ('weather_risk_level', 'weather_temperature', 'weather_humidity',
-                       'weather_wind_speed', 'weather_description', 'weather_city_name'),
-            'classes': ('collapse',),
         }),
     )
