@@ -35,7 +35,7 @@ jordan_dataset2/
 *.pth
 *.pt
 *.ckpt
-# *.onnx
+*.onnx
 
 # Saved experiment outputs
 saved_models/

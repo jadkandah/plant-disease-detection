@@ -104,6 +104,7 @@
     "offlineModel": "Offline",
     "onlineModelDesc": "Uses the backend model when connected",
     "offlineModelDesc": "Uses the local mobile model and syncs results later",
+    "onlineUnavailableDesc": "No internet connection — offline model is selected automatically",
     "about": "About App",
     "helpSupport": "Help & Support",
     "version": "Plant Disease Detection v1.0",

@@ -8,7 +8,7 @@ import { useModelMode } from '../../store/ModelModeContext';
 export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { t, language, setLanguage, isRTL } = useTranslation();
-  const { modelMode, setModelMode, isOnlineMode } = useModelMode();
+  const { setModelMode, isOnlineMode, canUseOnlineMode } = useModelMode();
 
   const handleHelpSupport = () => {
     Alert.alert(
@@ -48,24 +48,30 @@ export default function SettingsScreen() {
             </Text>
           </View>
           <Text style={[styles.modelModeDesc, isRTL && styles.rtlText]}>
-            {isOnlineMode ? t('settings.onlineModelDesc') : t('settings.offlineModelDesc')}
+            {!canUseOnlineMode
+              ? t('settings.onlineUnavailableDesc')
+              : isOnlineMode
+                ? t('settings.onlineModelDesc')
+                : t('settings.offlineModelDesc')}
           </Text>
           <View style={[styles.modelToggle, isRTL && styles.rtlRow]}>
             <TouchableOpacity
-              style={[styles.modeBtn, isOnlineMode && styles.modeBtnActiveOnline]}
+              style={[styles.modeBtn, !canUseOnlineMode && styles.modeBtnDisabled, isOnlineMode && styles.modeBtnActiveOnline]}
               onPress={() => setModelMode('online')}
+              disabled={!canUseOnlineMode}
             >
-              <Cloud color={isOnlineMode ? 'white' : '#666'} size={16} />
-              <Text style={[styles.modeBtnText, isOnlineMode && styles.modeBtnTextActive]}>
+              <Cloud color={isOnlineMode ? 'white' : canUseOnlineMode ? '#666' : '#aaa'} size={16} />
+              <Text style={[styles.modeBtnText, !canUseOnlineMode && styles.modeBtnTextDisabled, isOnlineMode && styles.modeBtnTextActive]}>
                 {t('settings.onlineModel')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modeBtn, !isOnlineMode && styles.modeBtnActiveOffline]}
+              style={[styles.modeBtn, !canUseOnlineMode && styles.modeBtnDisabled, !isOnlineMode && styles.modeBtnActiveOffline]}
               onPress={() => setModelMode('offline')}
+              disabled={!canUseOnlineMode}
             >
               <CloudOff color={!isOnlineMode ? 'white' : '#666'} size={16} />
-              <Text style={[styles.modeBtnText, !isOnlineMode && styles.modeBtnTextActive]}>
+              <Text style={[styles.modeBtnText, !canUseOnlineMode && isOnlineMode && styles.modeBtnTextDisabled, !isOnlineMode && styles.modeBtnTextActive]}>
                 {t('settings.offlineModel')}
               </Text>
             </TouchableOpacity>
@@ -181,6 +187,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#C62828',
     borderColor: '#C62828',
   },
+  modeBtnDisabled: {
+    opacity: 0.65,
+  },
   modeBtnText: {
     fontSize: 14,
     fontWeight: '600',
@@ -188,6 +197,9 @@ const styles = StyleSheet.create({
   },
   modeBtnTextActive: {
     color: 'white',
+  },
+  modeBtnTextDisabled: {
+    color: '#aaa',
   },
 
   languageToggle: { flexDirection: 'row', gap: 8 },
