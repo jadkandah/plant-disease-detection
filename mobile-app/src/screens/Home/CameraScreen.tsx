@@ -13,14 +13,28 @@ export default function CameraScreen({ navigation }: any) {
   const [facing, setFacing] = useState<'front' | 'back'>('back');
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
   const { isConnected } = useNetworkStatus();
   const { t } = useTranslation();
   const { isOnlineMode } = useModelMode();
   const { weather } = useWeatherRisk();
 
-  // Effective online: both toggle is online AND device has internet
-  const effectiveOnline = isOnlineMode && isConnected;
+  const getUploadErrorMessage = (error: any) => {
+    const backendMessage = error?.response?.data?.detail || error?.response?.data?.error || error?.message;
+    const message = String(backendMessage || '');
+    if (message.toLowerCase().includes('not a crop image') || message.toLowerCase().includes('not a leaf')) {
+      return t('gallery.notCropImage');
+    }
+    if (message.toLowerCase().includes('timeout') || error?.code === 'ECONNABORTED') {
+      return t('gallery.requestTimeout');
+    }
+    return message || t('camera.uploadFailed');
+  };
+
+  // The backend handles both online (ResNet) and offline (MobileNet) modes.
+  // We only queue for later if there is NO physical internet connection.
 
   if (!permission) return <View style={styles.container} />;
 
@@ -41,15 +55,19 @@ export default function CameraScreen({ navigation }: any) {
   const takePicture = async () => {
     if (cameraRef.current && !isProcessing) {
       try {
+        setErrorMessage(null);
+        setStatusMessage(t('camera.capturingImage'));
         setIsProcessing(true);
         const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
         if (!photo) {
+          setStatusMessage(null);
+          setErrorMessage(t('camera.captureFailed'));
           Alert.alert(t('common.error'), t('camera.captureFailed'));
           return;
         }
 
-        // If offline mode or no connection, queue
-        if (!effectiveOnline) {
+        // If no internet connection, queue locally
+        if (!isConnected) {
           const id = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           await enqueueOfflinePrediction({ id, imageUri: photo.uri, sourceType: 'camera', timestamp: new Date().toISOString() });
           Alert.alert(t('gallery.savedOffline'), t('gallery.savedOfflineMsg'), [{ text: t('common.ok'), onPress: () => navigation.goBack() }]);
@@ -57,6 +75,7 @@ export default function CameraScreen({ navigation }: any) {
         }
 
         const formData = new FormData();
+        setStatusMessage(t('gallery.analyzingImage'));
 
         if (Platform.OS === 'web') {
           const resp = await fetch(photo.uri);
@@ -83,11 +102,14 @@ export default function CameraScreen({ navigation }: any) {
           formData.append('city_name', weather.cityName);
         }
 
-        const headers = Platform.OS === 'web' ? {} : { 'Content-Type': 'multipart/form-data' };
-        const response = await apiClient.post('/predict/', formData, { headers });
+        const response = await apiClient.post('/predict/', formData);
+        setStatusMessage(null);
         navigation.navigate('Result', { prediction: response.data });
       } catch (error: any) {
-        Alert.alert(t('common.error'), t('camera.uploadFailed'));
+        const message = getUploadErrorMessage(error);
+        setStatusMessage(null);
+        setErrorMessage(message);
+        Alert.alert(t('common.error'), message);
       } finally {
         setIsProcessing(false);
       }
@@ -101,7 +123,7 @@ export default function CameraScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
-        {!effectiveOnline && (
+        {!isConnected && (
           <View style={styles.offlineBanner}>
             <Text style={styles.offlineText}>{t('gallery.offlineBanner')}</Text>
           </View>
@@ -117,6 +139,12 @@ export default function CameraScreen({ navigation }: any) {
             <X color="white" size={24} />
           </TouchableOpacity>
         </View>
+        {(statusMessage || errorMessage) && (
+          <View style={styles.messageBanner}>
+            {statusMessage && <Text style={styles.statusText}>{statusMessage}</Text>}
+            {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+          </View>
+        )}
       </CameraView>
     </View>
   );
@@ -131,6 +159,9 @@ const styles = StyleSheet.create({
   captureInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'white' },
   offlineBanner: { backgroundColor: 'rgba(230, 81, 0, 0.85)', padding: 10, alignItems: 'center' },
   offlineText: { color: 'white', fontSize: 13, fontWeight: '600' },
+  messageBanner: { position: 'absolute', left: 20, right: 20, bottom: 145, padding: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.94)', alignItems: 'center' },
+  statusText: { color: '#2E7D32', fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  errorText: { color: '#C62828', fontSize: 14, fontWeight: '600', textAlign: 'center' },
   permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#f9f9f9' },
   permissionText: { fontSize: 18, color: '#333', textAlign: 'center', marginBottom: 20 },
   permissionButton: { backgroundColor: '#2E7D32', padding: 15, borderRadius: 8, marginBottom: 12 },

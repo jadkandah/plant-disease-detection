@@ -19,14 +19,24 @@ export default function ResultScreen({ route, navigation }: any) {
     );
   }
 
-  const { is_healthy, confidence, disease_info } = prediction;
+  const { is_healthy, confidence, disease_info, prediction_key } = prediction;
   const isSafe = is_healthy;
+  const fallbackParts = String(prediction_key || '').split('___');
+  const fallbackCropName = fallbackParts[0] || t('common.noData');
+  const fallbackDiseaseName = (fallbackParts[1] || '').replace(/_/g, ' ') || t('common.noData');
 
   // Use language-specific fields from the disease_info
-  const cropName = language === 'ar' ? (disease_info.crop_name_ar || disease_info.crop_name_en) : disease_info.crop_name_en;
-  const diseaseName = language === 'ar' ? (disease_info.disease_name_ar || disease_info.disease_name_en) : disease_info.disease_name_en;
-  const description = language === 'ar' ? (disease_info.description_ar || disease_info.description_en) : disease_info.description_en;
-  const treatment = language === 'ar' ? (disease_info.treatment_ar || disease_info.treatment_en) : disease_info.treatment_en;
+  // Default is Arabic; when English, show both English + Arabic
+  const cropName = disease_info
+    ? (language === 'ar'
+        ? (disease_info.crop_name_ar || disease_info.crop_name_en)
+        : `${disease_info.crop_name_en} - ${disease_info.crop_name_ar || ''}`.trim())
+    : fallbackCropName;
+  const diseaseName = disease_info
+    ? (language === 'ar'
+        ? (disease_info.disease_name_ar || disease_info.disease_name_en)
+        : `${disease_info.disease_name_en} - ${disease_info.disease_name_ar || ''}`.trim())
+    : fallbackDiseaseName;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -44,7 +54,7 @@ export default function ResultScreen({ route, navigation }: any) {
           <Text style={[styles.statusTitle, { color: isSafe ? '#2E7D32' : '#D32F2F' }]}>
             {isSafe ? t('result.healthyCrop') : t('result.diseaseDetected')}
           </Text>
-          <Text style={styles.statusSubtitle}>{t('result.confidence')}: {(confidence * 100).toFixed(1)}%</Text>
+
         </View>
 
         <View style={styles.infoSection}>
@@ -56,18 +66,6 @@ export default function ResultScreen({ route, navigation }: any) {
               <View style={styles.divider} />
               <Text style={[styles.sectionLabel, isRTL && styles.rtlText]}>{t('result.diseaseType')}</Text>
               <Text style={[styles.sectionValue, isRTL && styles.rtlText]}>{diseaseName}</Text>
-            </>
-          )}
-
-          <View style={styles.divider} />
-          <Text style={[styles.sectionLabel, isRTL && styles.rtlText]}>{t('result.description')}</Text>
-          <Text style={[styles.bodyText, isRTL && styles.rtlText]}>{description}</Text>
-
-          {!isSafe && (
-            <>
-              <View style={styles.divider} />
-              <Text style={[styles.sectionLabel, isRTL && styles.rtlText]}>{t('result.treatmentAdvice')}</Text>
-              <Text style={[styles.bodyText, isRTL && styles.rtlText]}>{treatment}</Text>
             </>
           )}
         </View>

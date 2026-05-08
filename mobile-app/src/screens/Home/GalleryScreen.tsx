@@ -13,15 +13,31 @@ import { useWeatherRisk } from '../../services/weather/useWeatherRisk';
 export default function GalleryScreen({ navigation }: any) {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { isConnected } = useNetworkStatus();
   const { t, isRTL } = useTranslation();
   const { isOnlineMode } = useModelMode();
   const { weather } = useWeatherRisk();
 
-  // Effective online: both toggle is online AND device has internet
-  const effectiveOnline = isOnlineMode && isConnected;
+  const getUploadErrorMessage = (error: any) => {
+    const backendMessage = error?.response?.data?.detail || error?.response?.data?.error || error?.message;
+    const message = String(backendMessage || '');
+    if (message.toLowerCase().includes('not a crop image') || message.toLowerCase().includes('not a leaf')) {
+      return t('gallery.notCropImage');
+    }
+    if (message.toLowerCase().includes('timeout') || error?.code === 'ECONNABORTED') {
+      return t('gallery.requestTimeout');
+    }
+    return message || t('gallery.uploadFailed');
+  };
+
+  // The backend handles both online (ResNet) and offline (MobileNet) modes.
+  // We only queue for later if there is NO physical internet connection.
 
   const pickImage = async () => {
+    setErrorMessage(null);
+    setStatusMessage(null);
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -34,9 +50,16 @@ export default function GalleryScreen({ navigation }: any) {
   };
 
   const uploadImage = async () => {
-    if (!imageUri) return;
+    setErrorMessage(null);
+    setStatusMessage(null);
+    if (!imageUri) {
+      const message = t('gallery.noImageSelected');
+      setErrorMessage(message);
+      Alert.alert(t('common.error'), message);
+      return;
+    }
     console.log('[Gallery] uploadImage called, isConnected:', isConnected, 'isOnlineMode:', isOnlineMode, 'platform:', Platform.OS);
-    if (!effectiveOnline) {
+    if (!isConnected) {
       const id = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       await enqueueOfflinePrediction({ id, imageUri, sourceType: 'gallery', timestamp: new Date().toISOString() });
       Alert.alert(t('gallery.savedOffline'), t('gallery.savedOfflineMsg'), [{ text: t('common.ok'), onPress: () => navigation.goBack() }]);
@@ -44,6 +67,7 @@ export default function GalleryScreen({ navigation }: any) {
     }
     try {
       setIsProcessing(true);
+      setStatusMessage(t('gallery.analyzingImage'));
       console.log('[Gallery] Uploading image...');
       const formData = new FormData();
 
@@ -75,15 +99,16 @@ export default function GalleryScreen({ navigation }: any) {
         formData.append('city_name', weather.cityName);
       }
 
-      // On web, do NOT set Content-Type manually — browser must add the multipart boundary
-      const headers = Platform.OS === 'web' ? {} : { 'Content-Type': 'multipart/form-data' };
-      const res = await apiClient.post('/predict/', formData, { headers });
+      const res = await apiClient.post('/predict/', formData);
       console.log('[Gallery] Prediction response:', res.data);
+      setStatusMessage(null);
       navigation.navigate('Result', { prediction: res.data });
     } catch (error: any) {
       console.error('[Gallery] Upload error:', error?.response?.data || error?.message || error);
-      const errorMsg = error?.response?.data?.detail || error?.response?.data?.error || error?.message || t('gallery.uploadFailed');
-      Alert.alert(t('common.error'), String(errorMsg));
+      const message = getUploadErrorMessage(error);
+      setStatusMessage(null);
+      setErrorMessage(message);
+      Alert.alert(t('common.error'), message);
     } finally {
       setIsProcessing(false);
     }
@@ -100,7 +125,7 @@ export default function GalleryScreen({ navigation }: any) {
       </View>
 
       <View style={styles.content}>
-        {!effectiveOnline && (
+        {!isConnected && (
           <View style={styles.offlineBanner}>
             <Text style={styles.offlineText}>{t('gallery.offlineBanner')}</Text>
           </View>
@@ -117,9 +142,11 @@ export default function GalleryScreen({ navigation }: any) {
       <TouchableOpacity style={styles.buttonSecondary} onPress={pickImage} disabled={isProcessing}>
         <Text style={styles.buttonSecondaryText}>{imageUri ? t('gallery.changePhoto') : t('gallery.selectPhoto')}</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={[styles.buttonPrimary, (!imageUri || isProcessing) && styles.disabledButton]} onPress={uploadImage} disabled={!imageUri || isProcessing}>
-        {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.buttonPrimaryText}>{effectiveOnline ? t('gallery.analyzeCrop') : t('gallery.saveForLater')}</Text>}
+      <TouchableOpacity style={[styles.buttonPrimary, (!imageUri || isProcessing) && styles.disabledButton]} onPress={uploadImage} disabled={isProcessing}>
+        {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.buttonPrimaryText}>{isConnected ? t('gallery.analyzeCrop') : t('gallery.saveForLater')}</Text>}
       </TouchableOpacity>
+      {statusMessage && <Text style={styles.statusText}>{statusMessage}</Text>}
+      {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
       </View>
     </SafeAreaView>
   );
@@ -145,4 +172,6 @@ const styles = StyleSheet.create({
   buttonPrimary: { width: '100%', padding: 16, borderRadius: 8, backgroundColor: '#2E7D32', alignItems: 'center' },
   buttonPrimaryText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
   disabledButton: { backgroundColor: '#A5D6A7' },
+  statusText: { width: '100%', marginTop: 12, color: '#2E7D32', fontSize: 14, textAlign: 'center', fontWeight: '600' },
+  errorText: { width: '100%', marginTop: 12, color: '#C62828', fontSize: 14, textAlign: 'center', fontWeight: '600' },
 });
