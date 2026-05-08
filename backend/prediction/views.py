@@ -40,7 +40,7 @@ class PredictView(generics.CreateAPIView):
         # 2. Preprocessing pipeline (quality check + optional SAM)
         #
         #   🟢 Offline: image → quality check → MobileNetV3-Small
-        #   🔵 Online:  image → quality check → SAM → MultiModalResNet50 + weather
+        #   🔵 Online:  image → quality check → SAM → ResNet50 image-only 512
         # ──────────────────────────────────────────
         print(f"[predict] Mode: {mode}")
         preprocessed_image, preprocess_status = preprocess_image(image_file, mode=mode)
@@ -51,8 +51,8 @@ class PredictView(generics.CreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 3. Run AI inference on the preprocessed image
-        #    Online mode also passes weather features to the multimodal model
+        # 3. Run AI inference on the preprocessed image.
+        #    Weather values are preserved as request context/history, not model inputs.
         try:
             predicted_class_key, confidence = predict_from_array(
                 preprocessed_image,
