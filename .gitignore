@@ -51,6 +51,10 @@ logs/
 
 mlflow.db
 
+
+backend/db.sqlite3
+*.sqlite3
+
 ############################################
 # DATA DIRECTORIES (LARGE FILES)
 ############################################
