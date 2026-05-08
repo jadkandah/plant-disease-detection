@@ -39,6 +39,14 @@ export interface LocalPredictionResult {
   disease_info: ReturnType<typeof buildDiseaseInfo>;
 }
 
+interface LeafColorCheckResult {
+  isLeaf: boolean;
+  leafRatio: number;
+  greenRatio: number;
+  yellowRatio: number;
+  brownRatio: number;
+}
+
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const existing = document.querySelector(`script[src="${src}"]`);
@@ -54,6 +62,71 @@ function loadScript(src: string): Promise<void> {
     script.onerror = () => reject(new Error(`Could not load ${src}`));
     document.head.appendChild(script);
   });
+}
+
+function rgbToOpenCvHsv(r: number, g: number, b: number) {
+  const rf = r / 255;
+  const gf = g / 255;
+  const bf = b / 255;
+  const max = Math.max(rf, gf, bf);
+  const min = Math.min(rf, gf, bf);
+  const delta = max - min;
+
+  let hueDegrees = 0;
+  if (delta !== 0) {
+    if (max === rf) {
+      hueDegrees = 60 * (((gf - bf) / delta) % 6);
+    } else if (max === gf) {
+      hueDegrees = 60 * ((bf - rf) / delta + 2);
+    } else {
+      hueDegrees = 60 * ((rf - gf) / delta + 4);
+    }
+  }
+
+  if (hueDegrees < 0) hueDegrees += 360;
+
+  return {
+    h: hueDegrees / 2,
+    s: max === 0 ? 0 : (delta / max) * 255,
+    v: max * 255,
+  };
+}
+
+function checkLeafColors(data: Uint8ClampedArray, totalPixels: number): LeafColorCheckResult {
+  let greenPixels = 0;
+  let yellowPixels = 0;
+  let brownPixels = 0;
+  let leafPixels = 0;
+
+  for (let pixel = 0; pixel < totalPixels; pixel++) {
+    const source = pixel * 4;
+    const { h, s, v } = rgbToOpenCvHsv(data[source], data[source + 1], data[source + 2]);
+
+    const isGreen = h >= 35 && h <= 85 && s >= 40 && v >= 40;
+    const isYellow = h >= 20 && h <= 35 && s >= 40 && v >= 40;
+    const isBrown = h >= 10 && h <= 20 && s >= 50 && v >= 20 && v <= 200;
+
+    if (isGreen) greenPixels++;
+    if (isYellow) yellowPixels++;
+    if (isBrown) brownPixels++;
+    if (isGreen || isYellow || isBrown) leafPixels++;
+  }
+
+  const greenRatio = greenPixels / totalPixels;
+  const yellowRatio = yellowPixels / totalPixels;
+  const brownRatio = brownPixels / totalPixels;
+  const leafRatio = leafPixels / totalPixels;
+  const hasGreenLeafArea = greenRatio > 0.05;
+  const hasStressedLeafArea = greenRatio > 0.03 && (yellowRatio > 0.05 || brownRatio > 0.05);
+  const hasEnoughLeafPixels = leafRatio > 0.08;
+
+  return {
+    isLeaf: (hasGreenLeafArea || hasStressedLeafArea) && hasEnoughLeafPixels,
+    leafRatio,
+    greenRatio,
+    yellowRatio,
+    brownRatio,
+  };
 }
 
 async function getOrt(): Promise<OrtRuntime> {
@@ -128,6 +201,16 @@ async function imageUriToTensor(imageUri: string) {
   context.drawImage(image, 0, 0, IMAGE_SIZE, IMAGE_SIZE);
   const { data } = context.getImageData(0, 0, IMAGE_SIZE, IMAGE_SIZE);
   const imageArea = IMAGE_SIZE * IMAGE_SIZE;
+  const leafCheck = checkLeafColors(data, imageArea);
+  console.log(
+    `[LeafCheck] green=${leafCheck.greenRatio.toFixed(2)}, yellow=${leafCheck.yellowRatio.toFixed(2)}, ` +
+      `brown=${leafCheck.brownRatio.toFixed(2)}, total=${leafCheck.leafRatio.toFixed(2)}`
+  );
+
+  if (!leafCheck.isLeaf) {
+    throw new Error(`Rejected: Not a leaf (ratio=${leafCheck.leafRatio.toFixed(2)})`);
+  }
+
   const tensor = new Float32Array(3 * imageArea);
 
   for (let pixel = 0; pixel < imageArea; pixel++) {
