@@ -90,3 +90,6 @@ tempCodeRunnerFile.*
 *.tmp
 *.bak
 *.swp
+
+# Runtime media uploads
+backend/media/
