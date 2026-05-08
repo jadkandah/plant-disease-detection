@@ -1,21 +1,25 @@
 experiment_name: plant_disease_offline_models
+dataset_variant: background_removed
+patience: 5
+selection_metric: best_val_acc
+tracking_uri: sqlite:///mlflow.db
 
 runs:
-  - run_name: mobilenet_v3_small_512_epochs25_full_data_set
+  - run_name: mobilenet_v3_small_512_background_removed_epochs25
     model_name: mobilenet_v3_small
     batch_size: 4
     learning_rate: 0.001
     epochs: 25
     image_size: 512
 
-  - run_name: mobilenet_v3_large_512_epochs30_full_data_set
+  - run_name: mobilenet_v3_large_512_background_removed_epochs30
     model_name: mobilenet_v3_large
     batch_size: 4
     learning_rate: 0.001
     epochs: 30
     image_size: 512
 
-  - run_name: efficientnet_b0_512_epochs30_full_data_set
+  - run_name: efficientnet_b0_512_background_removed_epochs30
     model_name: efficientnet_b0
     batch_size: 4
     learning_rate: 0.001

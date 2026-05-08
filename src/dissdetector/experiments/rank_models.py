@@ -2,8 +2,10 @@ import math
 import mlflow
 import pandas as pd
 
+from src.dissdetector.config.runtime import DEFAULT_TRACKING_URI
 
-MLFLOW_TRACKING_URI = "sqlite:///mlflow.db"
+
+MLFLOW_TRACKING_URI = DEFAULT_TRACKING_URI
 
 ONLINE_EXPERIMENT_NAME = "plant_disease_online_models"
 OFFLINE_EXPERIMENT_NAME = "plant_disease_offline_models"

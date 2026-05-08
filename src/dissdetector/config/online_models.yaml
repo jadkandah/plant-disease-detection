@@ -1,9 +1,35 @@
 experiment_name: plant_disease_online_models
+dataset_variant: background_removed
+patience: 12
+selection_metric: best_val_acc
+tracking_uri: sqlite:///mlflow.db
 
 runs:
-  - run_name: multimodal_resnet50_background_removed_512_epochs30
+
+  - run_name: multimodal_resnet50_background_removed_512_epochs40
     model_name: multimodal_resnet50
-    batch_size: 6
+    batch_size: 4
     learning_rate: 0.001
-    epochs: 30
+    epochs: 40
+    image_size: 512
+
+  - run_name: image_only_resnet50_background_removed_512_epochs40
+    model_name: image_only_resnet50
+    batch_size: 4
+    learning_rate: 0.001
+    epochs: 40
+    image_size: 512
+
+  - run_name: metadata_only_mlp_background_removed_512_epochs40
+    model_name: metadata_only_mlp
+    batch_size: 4
+    learning_rate: 0.001
+    epochs: 40
+    image_size: 512
+
+  - run_name: late_fusion_multimodal_resnet50_background_removed_512_epochs40
+    model_name: late_fusion_multimodal_resnet50
+    batch_size: 4
+    learning_rate: 0.001
+    epochs: 40
     image_size: 512
