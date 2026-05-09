@@ -13,12 +13,6 @@ class DiseaseInfoModelTest(TestCase):
             disease_name_en='Bacterial Spot',
             disease_name_ar='البقعة البكتيرية',
             health_status='diseased',
-            description_en='Bacterial spot detected on Tomato.',
-            description_ar='تم اكتشاف البقعة البكتيرية على الطماطم.',
-            causes_en='Bacterial infection.',
-            causes_ar='عدوى بكتيرية.',
-            treatment_en='Apply copper-based fungicide.',
-            treatment_ar='استخدم مبيد فطري أساسه النحاس.',
         )
 
     def test_disease_info_creation(self):

@@ -6,7 +6,7 @@ from rest_framework import status
 from io import BytesIO
 from unittest.mock import patch
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from .preprocessing.pipeline import preprocess_image
 from .preprocessing.leaf_check import is_leaf_color
@@ -14,9 +14,23 @@ from .preprocessing.leaf_check import is_leaf_color
 User = get_user_model()
 
 
+def make_leaf_image_file(name='leaf.jpg'):
+    buffer = BytesIO()
+    image = Image.new('RGB', (128, 128), color=(225, 225, 215))
+    draw = ImageDraw.Draw(image)
+    draw.ellipse((28, 14, 102, 116), fill=(62, 155, 64))
+    draw.line((65, 22, 65, 108), fill=(35, 105, 42), width=3)
+    draw.line((65, 52, 42, 38), fill=(38, 120, 45), width=2)
+    draw.line((66, 66, 92, 52), fill=(38, 120, 45), width=2)
+    draw.ellipse((48, 72, 58, 82), fill=(118, 112, 38))
+    draw.ellipse((76, 40, 88, 52), fill=(145, 130, 44))
+    image.save(buffer, format='JPEG')
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type='image/jpeg')
+
+
 def make_test_image_file(name='leaf.jpg', color=(64, 160, 64)):
     buffer = BytesIO()
-    Image.new('RGB', (16, 16), color=color).save(buffer, format='JPEG')
+    Image.new('RGB', (128, 128), color=color).save(buffer, format='JPEG')
     return SimpleUploadedFile(name, buffer.getvalue(), content_type='image/jpeg')
 
 
@@ -51,7 +65,7 @@ class PredictionEndpointTest(TestCase):
 
         response = self.client.post(
             '/api/predict/',
-            {'image': make_test_image_file(), 'source_type': 'camera', 'mode': 'online'},
+            {'image': make_leaf_image_file(), 'source_type': 'camera', 'mode': 'online'},
             format='multipart',
         )
 
@@ -68,7 +82,7 @@ class PredictionEndpointTest(TestCase):
 
         response = self.client.post(
             '/api/predict/',
-            {'image': make_test_image_file(), 'source_type': 'gallery', 'mode': 'offline'},
+            {'image': make_leaf_image_file(), 'source_type': 'gallery', 'mode': 'offline'},
             format='multipart',
         )
 
@@ -88,7 +102,7 @@ class PreprocessingPipelineTest(TestCase):
         sam_image = np.ones((16, 16, 3), dtype=np.uint8)
         mock_extract.return_value = sam_image
 
-        image, status_message = preprocess_image(make_test_image_file(), mode='online')
+        image, status_message = preprocess_image(make_leaf_image_file(), mode='online')
 
         self.assertEqual(status_message, 'OK')
         self.assertIs(image, sam_image)
@@ -100,7 +114,7 @@ class PreprocessingPipelineTest(TestCase):
     def test_offline_mode_runs_quality_without_sam(self, mock_quality, mock_extract):
         mock_quality.return_value = (True, 'good')
 
-        image, status_message = preprocess_image(make_test_image_file(), mode='offline')
+        image, status_message = preprocess_image(make_leaf_image_file(), mode='offline')
 
         self.assertEqual(status_message, 'OK')
         self.assertIsNotNone(image)
@@ -126,7 +140,7 @@ class PreprocessingPipelineTest(TestCase):
     def test_leaf_image_passes_preprocessing(self, mock_quality):
         mock_quality.return_value = (True, 'good')
 
-        image, status_message = preprocess_image(make_test_image_file(), mode='offline')
+        image, status_message = preprocess_image(make_leaf_image_file(), mode='offline')
 
         self.assertIsNotNone(image)
         self.assertEqual(status_message, 'OK')
@@ -136,16 +150,18 @@ class PreprocessingPipelineTest(TestCase):
 class LeafColorCheckTest(TestCase):
     """Tests for HSV color-based leaf detection."""
 
-    def test_green_leaf_color_is_detected(self):
-        image = np.zeros((16, 16, 3), dtype=np.uint8)
-        image[:, :] = (64, 160, 64)
+    def test_leaf_image_is_detected(self):
+        image = np.zeros((128, 128, 3), dtype=np.uint8)
+        image[:, :] = (225, 225, 215)
+        cv2_image = np.array(Image.open(make_leaf_image_file()).convert('RGB'))
+        image = cv2_image[:, :, ::-1].copy()
         is_leaf, leaf_ratio = is_leaf_color(image)
 
         self.assertTrue(is_leaf)
         self.assertGreater(leaf_ratio, 0.1)
 
     def test_gray_non_leaf_color_is_rejected(self):
-        image = np.zeros((16, 16, 3), dtype=np.uint8)
+        image = np.zeros((128, 128, 3), dtype=np.uint8)
         image[:, :] = (128, 128, 128)
         is_leaf, leaf_ratio = is_leaf_color(image)
 
@@ -153,8 +169,25 @@ class LeafColorCheckTest(TestCase):
         self.assertEqual(leaf_ratio, 0)
 
     def test_warm_brown_non_leaf_color_is_rejected_without_green(self):
-        image = np.zeros((16, 16, 3), dtype=np.uint8)
+        image = np.zeros((128, 128, 3), dtype=np.uint8)
         image[:, :] = (35, 105, 150)
+        is_leaf, leaf_ratio = is_leaf_color(image)
+
+        self.assertFalse(is_leaf)
+        self.assertGreater(leaf_ratio, 0.1)
+
+    def test_uniform_green_non_leaf_surface_is_rejected(self):
+        image = np.zeros((128, 128, 3), dtype=np.uint8)
+        image[:, :] = (64, 160, 64)
+        is_leaf, leaf_ratio = is_leaf_color(image)
+
+        self.assertFalse(is_leaf)
+        self.assertGreater(leaf_ratio, 0.5)
+
+    def test_uniform_green_rectangle_is_rejected(self):
+        image = np.zeros((128, 128, 3), dtype=np.uint8)
+        image[:, :] = (180, 180, 180)
+        image[28:100, 22:106] = (64, 160, 64)
         is_leaf, leaf_ratio = is_leaf_color(image)
 
         self.assertFalse(is_leaf)

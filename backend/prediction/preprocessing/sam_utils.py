@@ -1,16 +1,3 @@
-"""
-SAM (Segment Anything Model) — MobileSAM for leaf extraction.
-
-Uses MobileSAM to segment the leaf from the background, replacing
-the background with white. This improves model accuracy for online mode.
-
-To install:
-    pip install git+https://github.com/ChaoningZhang/MobileSAM.git
-    wget -O mobile_sam.pt https://github.com/ChaoningZhang/MobileSAM/raw/master/weights/mobile_sam.pt
-
-If MobileSAM is not installed, the extraction gracefully falls back
-to returning the original image unchanged.
-"""
 import os
 import numpy as np
 
@@ -35,13 +22,11 @@ SAM_CHECKPOINT = os.path.join(
 )
 
 
-def is_sam_available() -> bool:
-    """Check if SAM is installed and the checkpoint exists."""
+def is_sam_available():
     return _SAM_AVAILABLE and os.path.exists(SAM_CHECKPOINT)
 
 
 def load_sam():
-    """Load MobileSAM model (singleton). Returns the predictor or None."""
     global _predictor
     if _predictor is not None:
         return _predictor
@@ -69,18 +54,6 @@ def load_sam():
 
 
 def extract_leaf(image: np.ndarray) -> np.ndarray:
-    """
-    Segment the leaf from the background using MobileSAM.
-    Places the leaf on a white background.
-
-    If SAM is not available, returns the original image unchanged.
-
-    Args:
-        image: BGR numpy array from cv2
-
-    Returns:
-        BGR numpy array with white background (or original if SAM unavailable)
-    """
     predictor = load_sam()
     if predictor is None:
         print("[sam_utils] SAM not available — returning original image")

@@ -22,6 +22,11 @@ class PredictionRecord(models.Model):
         choices=[('camera', 'Camera'), ('gallery', 'Gallery')],
         default='camera'
     )
+    model_mode = models.CharField(
+        max_length=20,
+        choices=[('online', 'Online'), ('offline', 'Offline')],
+        default='online'
+    )
     
     def __str__(self):
         return f"{self.user.email} - {self.crop_name} - {self.disease_name_en}"

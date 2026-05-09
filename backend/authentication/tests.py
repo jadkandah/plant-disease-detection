@@ -15,7 +15,7 @@ class AuthenticationTest(TestCase):
             'email': 'testuser@example.com',
             'password': 'SecurePass123!',
             'full_name': 'Test User',
-            'phone_number': '+962791234567',
+            'phone_number': '0791234567',
         }
 
     def test_register_user(self):
@@ -32,6 +32,68 @@ class AuthenticationTest(TestCase):
         self.client.post('/api/auth/register/', self.user_data)
         response = self.client.post('/api/auth/register/', self.user_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_register_normalizes_email_and_phone(self):
+        """Registration stores lowercase email and a digit-only local phone number."""
+        data = {
+            **self.user_data,
+            'email': 'MIXEDCASE@EXAMPLE.COM',
+            'phone_number': '079 123-4567',
+        }
+        response = self.client.post('/api/auth/register/', data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        user = User.objects.get(email='mixedcase@example.com')
+        self.assertEqual(user.phone_number, '0791234567')
+        self.assertEqual(response.data['user']['email'], 'mixedcase@example.com')
+
+    def test_register_rejects_invalid_email(self):
+        """Email must look like a real address."""
+        data = {**self.user_data, 'email': 'invalid-email'}
+        response = self.client.post('/api/auth/register/', data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+
+    def test_register_rejects_invalid_phone_number(self):
+        """Phone number must be 10 digits and start with 07."""
+        invalid_numbers = ['+962791234567', '061234567', '079123456', '07912345678']
+
+        for phone_number in invalid_numbers:
+            with self.subTest(phone_number=phone_number):
+                data = {
+                    **self.user_data,
+                    'email': f'{phone_number.replace("+", "plus")}@example.com',
+                    'phone_number': phone_number,
+                }
+                response = self.client.post('/api/auth/register/', data)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn('phone_number', response.data)
+
+    def test_register_rejects_weak_password(self):
+        """Password must satisfy strength requirements."""
+        weak_passwords = ['short1!', 'lowercase123!', 'UPPERCASE123!', 'NoNumber!', 'NoSpecial123']
+
+        for index, password in enumerate(weak_passwords):
+            with self.subTest(password=password):
+                data = {
+                    **self.user_data,
+                    'email': f'weak{index}@example.com',
+                    'password': password,
+                }
+                response = self.client.post('/api/auth/register/', data)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn('password', response.data)
+
+    def test_register_password_cannot_contain_name_or_email(self):
+        """Password cannot reuse obvious account identity fields."""
+        data = {
+            **self.user_data,
+            'email': 'jane@example.com',
+            'full_name': 'Jane Farmer',
+            'password': 'JaneFarmer123!',
+        }
+        response = self.client.post('/api/auth/register/', data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('password', response.data)
 
     def test_login_valid_credentials(self):
         """Login with valid credentials returns tokens."""
@@ -79,3 +141,15 @@ class AuthenticationTest(TestCase):
             'new_password': 'NewSecurePass456!',
         })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_change_password_rejects_weak_new_password(self):
+        """Password strength rules also apply when changing a password."""
+        reg_response = self.client.post('/api/auth/register/', self.user_data)
+        token = reg_response.data['tokens']['access']
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.put('/api/auth/change-password/', {
+            'old_password': self.user_data['password'],
+            'new_password': 'weak',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('new_password', response.data)

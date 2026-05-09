@@ -1,33 +1,11 @@
-"""
-Image preprocessing pipeline for plant disease detection.
-
-Orchestrates quality checks and optional SAM-based leaf extraction
-before the image reaches the classification model.
-
-Flow:
-  🟢 Offline:  image → quality check → model
-  🔵 Online:   image → quality check → SAM leaf extraction → model
-"""
 import cv2
 import numpy as np
 from .quality import check_quality
 from .sam_utils import extract_leaf
-from .leaf_check import is_leaf_color
+from .leaf_check import is_leaf_image
 
 
 def preprocess_image(file, mode="offline"):
-    """
-    Full preprocessing pipeline.
-
-    Args:
-        file: Django UploadedFile or file-like object
-        mode: "online" (with SAM) or "offline" (quality check only)
-
-    Returns:
-        (image, status_message)
-        - image: BGR numpy array if valid, None if rejected
-        - status_message: "OK" or rejection reason
-    """
     # Read file bytes into cv2 image
     file_bytes = file.read()
     np_arr = np.frombuffer(file_bytes, np.uint8)
@@ -45,8 +23,8 @@ def preprocess_image(file, mode="offline"):
         print(f"[pipeline] Quality check FAILED: {reason}")
         return None, f"Rejected: {reason}"
 
-    #Leaf detection
-    is_leaf, ratio = is_leaf_color(image)
+    # Reject obvious non-leaf inputs before classification.
+    is_leaf, ratio = is_leaf_image(image)
     
     if not is_leaf:
         return None, f"Rejected: Not a leaf (ratio={ratio:.2f})"

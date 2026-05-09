@@ -15,9 +15,9 @@ class DiseaseInfoAdmin(admin.ModelAdmin):
             'fields': ('class_key', 'health_status'),
         }),
         ('English', {
-            'fields': ('crop_name_en', 'disease_name_en', 'description_en', 'causes_en', 'treatment_en'),
+            'fields': ('crop_name_en', 'disease_name_en'),
         }),
         ('Arabic (عربي)', {
-            'fields': ('crop_name_ar', 'disease_name_ar', 'description_ar', 'causes_ar', 'treatment_ar'),
+            'fields': ('crop_name_ar', 'disease_name_ar'),
         }),
     )

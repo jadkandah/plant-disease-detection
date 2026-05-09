@@ -12,7 +12,7 @@ from diseases.models import DiseaseInfo
 # ──────────────────────────────────────────────
 # Class keys MUST match the model's CLASS_NAMES exactly.
 # These use the Parent___Leaf format from the dataset folders.
-# The model was trained on 45 classes (no Eggplant).
+# The model was trained on 55 classes, including Eggplant and extended Orange classes.
 # ──────────────────────────────────────────────
 CLASSES = {
     # Apple (4)
@@ -167,22 +167,6 @@ def seed_data():
         crop_ar = CROP_NAME_AR.get(crop, crop)
         disease_ar = DISEASE_NAME_AR.get(disease, disease)
 
-        # Descriptions
-        if is_healthy:
-            desc_en = f"The {crop} crop appears perfectly healthy with no visible signs of disease."
-            desc_ar = f"يبدو محصول {crop_ar} سليماً تماماً بدون أي علامات مرئية للمرض."
-            causes_en = "Optimal growth conditions and good agricultural practices."
-            causes_ar = "ظروف نمو مثالية وممارسات زراعية جيدة."
-            treatment_en = "• Continue current care routine\n• Regular monitoring recommended"
-            treatment_ar = "• استمر في روتين الرعاية الحالي\n• يُنصح بالمراقبة المنتظمة"
-        else:
-            desc_en = f"{disease} detected on {crop}. This condition may affect crop yield if left untreated."
-            desc_ar = f"تم اكتشاف {disease_ar} على {crop_ar}. قد تؤثر هذه الحالة على المحصول إذا لم تُعالج."
-            causes_en = f"Common causes include environmental stress, pests, or pathogens."
-            causes_ar = f"تشمل الأسباب الشائعة الإجهاد البيئي أو الآفات أو مسببات الأمراض."
-            treatment_en = "• Remove affected leaves and dispose properly\n• Apply appropriate fungicide or pesticide\n• Ensure proper spacing for air circulation\n• Monitor regularly for recurrence"
-            treatment_ar = "• أزل الأوراق المصابة وتخلص منها بشكل صحيح\n• استخدم المبيد الفطري أو الحشري المناسب\n• تأكد من التباعد المناسب لتهوية الهواء\n• راقب بانتظام لمنع تكرار الإصابة"
-
         obj, created = DiseaseInfo.objects.update_or_create(
             class_key=class_key,
             defaults={
@@ -191,12 +175,6 @@ def seed_data():
                 'disease_name_en': disease,
                 'disease_name_ar': disease_ar,
                 'health_status': health_status,
-                'description_en': desc_en,
-                'description_ar': desc_ar,
-                'causes_en': causes_en,
-                'causes_ar': causes_ar,
-                'treatment_en': treatment_en,
-                'treatment_ar': treatment_ar,
             }
         )
         if created:

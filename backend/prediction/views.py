@@ -80,6 +80,7 @@ class PredictView(generics.CreateAPIView):
             is_healthy=predicted_disease.health_status == 'healthy',
             source_type=source_type,
             sync_status='synced',
+            model_mode=mode,
         )
 
         # 6. Return the result
