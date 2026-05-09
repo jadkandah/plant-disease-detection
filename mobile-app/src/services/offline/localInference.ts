@@ -45,6 +45,11 @@ interface LeafColorCheckResult {
   greenRatio: number;
   yellowRatio: number;
   brownRatio: number;
+  largestComponentRatio: number;
+  largestComponentLeafFraction: number;
+  edgeRatio: number;
+  saturationStd: number;
+  valueStd: number;
 }
 
 function loadScript(src: string): Promise<void> {
@@ -92,15 +97,75 @@ function rgbToOpenCvHsv(r: number, g: number, b: number) {
   };
 }
 
-function checkLeafColors(data: Uint8ClampedArray, totalPixels: number): LeafColorCheckResult {
+function getLargestLeafComponent(mask: Uint8Array, width: number, height: number) {
+  const totalPixels = width * height;
+  const visited = new Uint8Array(totalPixels);
+  const stack = new Int32Array(totalPixels);
+  let largestArea = 0;
+  let largestExtent = 0;
+
+  for (let start = 0; start < totalPixels; start++) {
+    if (!mask[start] || visited[start]) continue;
+
+    let stackSize = 0;
+    let area = 0;
+    let minX = width;
+    let minY = height;
+    let maxX = 0;
+    let maxY = 0;
+
+    visited[start] = 1;
+    stack[stackSize++] = start;
+
+    while (stackSize > 0) {
+      const current = stack[--stackSize];
+      const x = current % width;
+      const y = Math.floor(current / width);
+
+      area++;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+
+      const neighbors = [current - 1, current + 1, current - width, current + width];
+      for (const next of neighbors) {
+        if (next < 0 || next >= totalPixels || visited[next] || !mask[next]) continue;
+        const nextX = next % width;
+        if ((next === current - 1 && nextX !== x - 1) || (next === current + 1 && nextX !== x + 1)) continue;
+        visited[next] = 1;
+        stack[stackSize++] = next;
+      }
+    }
+
+    if (area > largestArea) {
+      const bboxArea = Math.max((maxX - minX + 1) * (maxY - minY + 1), 1);
+      largestArea = area;
+      largestExtent = area / bboxArea;
+    }
+  }
+
+  return { largestArea, largestExtent };
+}
+
+function checkLeafColors(data: Uint8ClampedArray, width: number, height: number): LeafColorCheckResult {
+  const totalPixels = width * height;
+  const mask = new Uint8Array(totalPixels);
   let greenPixels = 0;
   let yellowPixels = 0;
   let brownPixels = 0;
   let leafPixels = 0;
+  let edgePixels = 0;
+  let saturationSum = 0;
+  let saturationSquareSum = 0;
+  let valueSum = 0;
+  let valueSquareSum = 0;
+  const luminance = new Float32Array(totalPixels);
 
   for (let pixel = 0; pixel < totalPixels; pixel++) {
     const source = pixel * 4;
     const { h, s, v } = rgbToOpenCvHsv(data[source], data[source + 1], data[source + 2]);
+    luminance[pixel] = data[source] * 0.299 + data[source + 1] * 0.587 + data[source + 2] * 0.114;
 
     const isGreen = h >= 35 && h <= 85 && s >= 40 && v >= 40;
     const isYellow = h >= 20 && h <= 35 && s >= 40 && v >= 40;
@@ -109,23 +174,66 @@ function checkLeafColors(data: Uint8ClampedArray, totalPixels: number): LeafColo
     if (isGreen) greenPixels++;
     if (isYellow) yellowPixels++;
     if (isBrown) brownPixels++;
-    if (isGreen || isYellow || isBrown) leafPixels++;
+    if (isGreen || isYellow || isBrown) {
+      mask[pixel] = 1;
+      leafPixels++;
+      saturationSum += s;
+      saturationSquareSum += s * s;
+      valueSum += v;
+      valueSquareSum += v * v;
+    }
   }
 
+  for (let y = 0; y < height - 1; y++) {
+    for (let x = 0; x < width - 1; x++) {
+      const pixel = y * width + x;
+      if (!mask[pixel]) continue;
+
+      const right = pixel + 1;
+      const down = pixel + width;
+      const rightDiff = mask[right] ? Math.abs(luminance[pixel] - luminance[right]) : 0;
+      const downDiff = mask[down] ? Math.abs(luminance[pixel] - luminance[down]) : 0;
+      if (rightDiff > 22 || downDiff > 22) edgePixels++;
+    }
+  }
+
+  const { largestArea, largestExtent } = getLargestLeafComponent(mask, width, height);
   const greenRatio = greenPixels / totalPixels;
   const yellowRatio = yellowPixels / totalPixels;
   const brownRatio = brownPixels / totalPixels;
   const leafRatio = leafPixels / totalPixels;
-  const hasGreenLeafArea = greenRatio > 0.05;
-  const hasStressedLeafArea = greenRatio > 0.03 && (yellowRatio > 0.05 || brownRatio > 0.05);
+  const largestComponentRatio = largestArea / totalPixels;
+  const largestComponentLeafFraction = largestArea / Math.max(leafPixels, 1);
+  const edgeRatio = edgePixels / Math.max(leafPixels, 1);
+  const saturationMean = saturationSum / Math.max(leafPixels, 1);
+  const valueMean = valueSum / Math.max(leafPixels, 1);
+  const saturationStd = Math.sqrt(Math.max(saturationSquareSum / Math.max(leafPixels, 1) - saturationMean ** 2, 0));
+  const valueStd = Math.sqrt(Math.max(valueSquareSum / Math.max(leafPixels, 1) - valueMean ** 2, 0));
+
+  const hasGreenLeafArea = greenRatio > 0.04;
+  const hasStressedLeafArea = greenRatio > 0.015 && (yellowRatio + brownRatio > 0.06);
   const hasEnoughLeafPixels = leafRatio > 0.08;
+  const hasContiguousLeafRegion = largestComponentRatio > 0.035 && largestComponentLeafFraction > 0.35;
+  const hasNaturalVariation = edgeRatio > 0.006 || saturationStd > 18 || valueStd > 18;
+  const isFlatSurface = leafRatio > 0.55 && largestComponentLeafFraction > 0.75 && !hasNaturalVariation;
+  const isUniformArtificialShape = largestExtent > 0.9 && !hasNaturalVariation;
 
   return {
-    isLeaf: (hasGreenLeafArea || hasStressedLeafArea) && hasEnoughLeafPixels,
+    isLeaf:
+      (hasGreenLeafArea || hasStressedLeafArea) &&
+      hasEnoughLeafPixels &&
+      hasContiguousLeafRegion &&
+      !isFlatSurface &&
+      !isUniformArtificialShape,
     leafRatio,
     greenRatio,
     yellowRatio,
     brownRatio,
+    largestComponentRatio,
+    largestComponentLeafFraction,
+    edgeRatio,
+    saturationStd,
+    valueStd,
   };
 }
 
@@ -201,10 +309,12 @@ async function imageUriToTensor(imageUri: string) {
   context.drawImage(image, 0, 0, IMAGE_SIZE, IMAGE_SIZE);
   const { data } = context.getImageData(0, 0, IMAGE_SIZE, IMAGE_SIZE);
   const imageArea = IMAGE_SIZE * IMAGE_SIZE;
-  const leafCheck = checkLeafColors(data, imageArea);
+  const leafCheck = checkLeafColors(data, IMAGE_SIZE, IMAGE_SIZE);
   console.log(
     `[LeafCheck] green=${leafCheck.greenRatio.toFixed(2)}, yellow=${leafCheck.yellowRatio.toFixed(2)}, ` +
-      `brown=${leafCheck.brownRatio.toFixed(2)}, total=${leafCheck.leafRatio.toFixed(2)}`
+      `brown=${leafCheck.brownRatio.toFixed(2)}, total=${leafCheck.leafRatio.toFixed(2)}, ` +
+      `largest=${leafCheck.largestComponentRatio.toFixed(2)}, edge=${leafCheck.edgeRatio.toFixed(3)}, ` +
+      `s_std=${leafCheck.saturationStd.toFixed(1)}, v_std=${leafCheck.valueStd.toFixed(1)}`
   );
 
   if (!leafCheck.isLeaf) {

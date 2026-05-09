@@ -12,6 +12,9 @@ interface PredictionItem {
   confidence: number;
   is_healthy: boolean;
   predicted_at: string;
+  source_type: 'camera' | 'gallery';
+  model_mode: 'online' | 'offline';
+  sync_status: 'synced' | 'pending';
 }
 
 export default function HistoryScreen() {
@@ -38,21 +41,33 @@ export default function HistoryScreen() {
 
   const handleSearch = () => { fetchHistory(searchQuery || undefined); };
 
-  const renderItem = ({ item }: { item: PredictionItem }) => (
-    <View style={[styles.card, item.is_healthy ? styles.cardHealthy : styles.cardDiseased]}>
-      <View style={[styles.cardHeader, isRTL && styles.rtlRow]}>
-        <Text style={styles.cropName}>{item.crop_name}</Text>
-        <Text style={[styles.badge, item.is_healthy ? styles.badgeHealthy : styles.badgeDiseased]}>
-          {item.is_healthy ? t('history.healthy') : t('history.diseased')}
-        </Text>
+  const renderItem = ({ item }: { item: PredictionItem }) => {
+    const isOffline = item.model_mode === 'offline';
+    const modelLabel = isOffline ? t('history.offlineSource') : t('history.onlineSource');
+    const captureLabel = item.source_type === 'gallery' ? t('history.gallerySource') : t('history.cameraSource');
+
+    return (
+      <View style={[styles.card, item.is_healthy ? styles.cardHealthy : styles.cardDiseased]}>
+        <View style={[styles.cardHeader, isRTL && styles.rtlRow]}>
+          <Text style={styles.cropName}>{item.crop_name}</Text>
+          <View style={[styles.badgeRow, isRTL && styles.rtlRow]}>
+            <Text style={[styles.sourceBadge, isOffline ? styles.sourceBadgeOffline : styles.sourceBadgeOnline]}>
+              {modelLabel}
+            </Text>
+            <Text style={[styles.badge, item.is_healthy ? styles.badgeHealthy : styles.badgeDiseased]}>
+              {item.is_healthy ? t('history.healthy') : t('history.diseased')}
+            </Text>
+          </View>
+        </View>
+        {!item.is_healthy && <Text style={[styles.diseaseName, isRTL && styles.rtlText]}>{item.disease_name_en}</Text>}
+        <View style={[styles.cardFooter, isRTL && styles.rtlRow]}>
+          <Text style={styles.confidence}>{t('result.confidence')}: {(item.confidence * 100).toFixed(1)}%</Text>
+          <Text style={styles.sourceText}>{captureLabel}</Text>
+          <Text style={styles.date}>{new Date(item.predicted_at).toLocaleDateString()}</Text>
+        </View>
       </View>
-      {!item.is_healthy && <Text style={[styles.diseaseName, isRTL && styles.rtlText]}>{item.disease_name_en}</Text>}
-      <View style={[styles.cardFooter, isRTL && styles.rtlRow]}>
-        <Text style={styles.confidence}>{t('result.confidence')}: {(item.confidence * 100).toFixed(1)}%</Text>
-        <Text style={styles.date}>{new Date(item.predicted_at).toLocaleDateString()}</Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -94,11 +109,16 @@ const styles = StyleSheet.create({
   cardDiseased: { borderLeftColor: '#D32F2F' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   cropName: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, fontSize: 12, fontWeight: 'bold', overflow: 'hidden' },
   badgeHealthy: { backgroundColor: '#E8F5E9', color: '#2E7D32' },
   badgeDiseased: { backgroundColor: '#FFEBEE', color: '#D32F2F' },
+  sourceBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, fontSize: 12, fontWeight: 'bold', overflow: 'hidden' },
+  sourceBadgeOnline: { backgroundColor: '#E3F2FD', color: '#1565C0' },
+  sourceBadgeOffline: { backgroundColor: '#FFF3E0', color: '#E65100' },
   diseaseName: { fontSize: 15, color: '#666', marginBottom: 8 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between' },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   confidence: { fontSize: 13, color: '#888' },
+  sourceText: { fontSize: 13, color: '#888' },
   date: { fontSize: 13, color: '#888' },
 });

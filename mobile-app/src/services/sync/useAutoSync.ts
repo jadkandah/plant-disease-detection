@@ -1,56 +1,196 @@
-import { useEffect, useRef } from 'react';
-import { AppState, AppStateStatus, Alert } from 'react-native';
-import { useNetworkStatus } from '../network/useNetworkStatus';
-import { syncOfflineQueue, getOfflineQueue } from '../offline/offlineQueue';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
+import { syncOfflineQueue, getOfflineQueue, subscribeOfflineQueue } from '../offline/offlineQueue';
 import { useModelMode } from '../../store/ModelModeContext';
+
+const SYNC_POLL_INTERVAL_MS = 7000;
+const SYNC_SUCCESS_VISIBLE_MS = 5000;
+
+export type SyncPhase = 'idle' | 'waiting' | 'syncing' | 'synced' | 'failed';
+
+export interface AutoSyncState {
+  phase: SyncPhase;
+  pendingCount: number;
+  syncedCount: number;
+  visible: boolean;
+}
+
+const IDLE_SYNC_STATE: AutoSyncState = {
+  phase: 'idle',
+  pendingCount: 0,
+  syncedCount: 0,
+  visible: false,
+};
 
 /**
  * Hook that automatically syncs offline predictions when the device
  * comes back online or the app returns to foreground.
  */
-export function useAutoSync() {
-  const { isConnected } = useNetworkStatus();
-  const { isOnlineMode } = useModelMode();
-  const prevConnected = useRef<boolean>(isConnected);
+export function useAutoSync(enabled = true): AutoSyncState {
+  const { canUseOnlineMode } = useModelMode();
+  const prevCanSync = useRef<boolean>(canUseOnlineMode);
+  const isSyncing = useRef(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [syncState, setSyncState] = useState<AutoSyncState>(IDLE_SYNC_STATE);
 
-  // Sync when network reconnects
+  const clearHideTimer = useCallback(() => {
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+  }, []);
+
+  const showSyncedState = useCallback((syncedCount: number, remainingCount: number) => {
+    clearHideTimer();
+    setSyncState({
+      phase: 'synced',
+      pendingCount: remainingCount,
+      syncedCount,
+      visible: true,
+    });
+
+    hideTimer.current = setTimeout(() => {
+      if (remainingCount > 0) {
+        setSyncState({
+          phase: 'waiting',
+          pendingCount: remainingCount,
+          syncedCount: 0,
+          visible: true,
+        });
+      } else {
+        setSyncState(IDLE_SYNC_STATE);
+      }
+    }, SYNC_SUCCESS_VISIBLE_MS);
+  }, [clearHideTimer]);
+
+  const attemptSync = useCallback(async () => {
+    if (!enabled || !canUseOnlineMode || isSyncing.current) return;
+
+    isSyncing.current = true;
+    try {
+      const queue = await getOfflineQueue();
+      if (queue.length === 0) {
+        setSyncState(IDLE_SYNC_STATE);
+        return;
+      }
+
+      clearHideTimer();
+      setSyncState({
+        phase: 'syncing',
+        pendingCount: queue.length,
+        syncedCount: 0,
+        visible: true,
+      });
+
+      const result = await syncOfflineQueue();
+      if (result.synced > 0) {
+        showSyncedState(result.synced, result.remaining);
+      } else if (result.remaining > 0) {
+        setSyncState({
+          phase: 'failed',
+          pendingCount: result.remaining,
+          syncedCount: 0,
+          visible: true,
+        });
+      } else {
+        setSyncState(IDLE_SYNC_STATE);
+      }
+    } catch (error) {
+      console.log('Auto-sync failed:', error);
+      const remaining = await getOfflineQueue();
+      setSyncState(
+        remaining.length > 0
+          ? {
+              phase: 'failed',
+              pendingCount: remaining.length,
+              syncedCount: 0,
+              visible: true,
+            }
+          : IDLE_SYNC_STATE
+      );
+    } finally {
+      isSyncing.current = false;
+    }
+  }, [canUseOnlineMode, clearHideTimer, enabled, showSyncedState]);
+
   useEffect(() => {
-    if (isConnected && isOnlineMode && !prevConnected.current) {
+    if (!enabled) {
+      clearHideTimer();
+      setSyncState(IDLE_SYNC_STATE);
+      return;
+    }
+
+    return subscribeOfflineQueue((queue) => {
+      if (isSyncing.current) {
+        setSyncState((current) =>
+          current.phase === 'syncing'
+            ? { ...current, pendingCount: queue.length }
+            : current
+        );
+        return;
+      }
+
+      if (queue.length === 0) {
+        setSyncState((current) => (current.phase === 'synced' ? current : IDLE_SYNC_STATE));
+        return;
+      }
+
+      if (canUseOnlineMode) {
+        attemptSync();
+      } else {
+        clearHideTimer();
+        setSyncState({
+          phase: 'waiting',
+          pendingCount: queue.length,
+          syncedCount: 0,
+          visible: true,
+        });
+      }
+    });
+  }, [attemptSync, canUseOnlineMode, clearHideTimer, enabled]);
+
+  // Sync when backend/internet becomes reachable again.
+  useEffect(() => {
+    if (enabled && canUseOnlineMode && !prevCanSync.current) {
       attemptSync();
     }
-    prevConnected.current = isConnected;
-  }, [isConnected, isOnlineMode]);
+    prevCanSync.current = canUseOnlineMode;
+  }, [attemptSync, canUseOnlineMode, enabled]);
 
-  // Sync when the tester switches back from local/offline mode.
+  // Sync any queued offline predictions whenever the app can reach the backend,
+  // even if the user keeps the model selector on Offline.
   useEffect(() => {
-    if (isConnected && isOnlineMode) {
+    if (enabled && canUseOnlineMode) {
       attemptSync();
     }
-  }, [isConnected, isOnlineMode]);
+  }, [attemptSync, canUseOnlineMode, enabled]);
 
-  // Sync when app comes to foreground
+  // Sync when app comes to foreground.
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
-      if (nextState === 'active' && isConnected && isOnlineMode) {
+      if (nextState === 'active' && enabled && canUseOnlineMode) {
         attemptSync();
       }
     };
 
     const sub = AppState.addEventListener('change', handleAppStateChange);
     return () => sub.remove();
-  }, [isConnected, isOnlineMode]);
+  }, [attemptSync, canUseOnlineMode, enabled]);
 
-  const attemptSync = async () => {
-    try {
-      const queue = await getOfflineQueue();
-      if (queue.length === 0) return;
+  // Safety net: if reconnect events are missed, queued items still sync soon.
+  useEffect(() => {
+    if (!enabled || !canUseOnlineMode) return;
 
-      const synced = await syncOfflineQueue();
-      if (synced > 0) {
-        Alert.alert('Sync Complete', `${synced} offline prediction(s) synced successfully!`);
-      }
-    } catch (error) {
-      console.log('Auto-sync failed:', error);
-    }
-  };
+    const interval = setInterval(() => {
+      attemptSync();
+    }, SYNC_POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [attemptSync, canUseOnlineMode, enabled]);
+
+  useEffect(() => {
+    return () => clearHideTimer();
+  }, [clearHideTimer]);
+
+  return syncState;
 }

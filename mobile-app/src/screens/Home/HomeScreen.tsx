@@ -6,10 +6,30 @@ import { useTranslation } from '../../store/LanguageContext';
 import { useNetworkStatus } from '../../services/network/useNetworkStatus';
 import { useModelMode } from '../../store/ModelModeContext';
 
+const DAILY_TIP_KEYS = [
+  'home.tipText1',
+  'home.tipText2',
+  'home.tipText3',
+  'home.tipText4',
+  'home.tipText5',
+  'home.tipText6',
+  'home.tipText7',
+];
+
+const getDailyTipKey = () => {
+  const today = new Date();
+  const dayNumber = Math.floor(
+    Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86400000
+  );
+
+  return DAILY_TIP_KEYS[dayNumber % DAILY_TIP_KEYS.length];
+};
+
 export default function HomeScreen({ navigation }: any) {
   const { t, isRTL } = useTranslation();
   const { isConnected } = useNetworkStatus();
   const { isOnlineMode } = useModelMode();
+  const dailyTipKey = getDailyTipKey();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -55,7 +75,7 @@ export default function HomeScreen({ navigation }: any) {
           <HeartPulse color="#E65100" size={24} style={isRTL ? { marginLeft: 16 } : { marginRight: 16 }} />
           <View style={styles.tipTextContainer}>
             <Text style={[styles.tipTitle, isRTL && styles.rtlText]}>{t('home.dailyTip')}</Text>
-            <Text style={[styles.tipText, isRTL && styles.rtlText]}>{t('home.tipText')}</Text>
+            <Text style={[styles.tipText, isRTL && styles.rtlText]}>{t(dailyTipKey)}</Text>
           </View>
         </View>
       </ScrollView>

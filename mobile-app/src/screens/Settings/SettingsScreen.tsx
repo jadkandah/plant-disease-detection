@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Switch, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight, HelpCircle, Info, Cloud, CloudOff } from 'lucide-react-native';
 import { useTranslation } from '../../store/LanguageContext';
 import { useModelMode } from '../../store/ModelModeContext';
 
 export default function SettingsScreen() {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { t, language, setLanguage, isRTL } = useTranslation();
   const { setModelMode, isOnlineMode, canUseOnlineMode } = useModelMode();
 
@@ -28,17 +27,6 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.container}>
       <Text style={[styles.title, isRTL && styles.rtlText]}>{t('settings.title')}</Text>
       <ScrollView>
-        {/* Push Notifications */}
-        <View style={[styles.settingRow, isRTL && styles.rtlRow]}>
-          <Text style={styles.settingLabel}>{t('settings.pushNotifications')}</Text>
-          <Switch
-            trackColor={{ false: '#ccc', true: '#81C784' }}
-            thumbColor={notificationsEnabled ? '#2E7D32' : '#f4f3f4'}
-            onValueChange={setNotificationsEnabled}
-            value={notificationsEnabled}
-          />
-        </View>
-
         {/* Model Mode Toggle — Online / Offline */}
         <View style={styles.modelModeCard}>
           <View style={[styles.modelModeHeader, isRTL && styles.rtlRow]}>

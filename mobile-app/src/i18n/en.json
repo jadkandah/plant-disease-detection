@@ -24,6 +24,11 @@
     "hasAccount": "Already have an account? Login",
     "fillAllFields": "Please fill in all fields.",
     "fillBothFields": "Please fill in both fields.",
+    "invalidFullName": "Full name must be at least 2 characters.",
+    "invalidEmail": "Enter a valid email address, for example user@example.com.",
+    "invalidPhone": "Phone number must be 10 digits and start with 07.",
+    "weakPassword": "Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character.",
+    "passwordContainsPersonalInfo": "Password cannot contain your name or email.",
     "loginFailed": "Login failed. Please verify credentials.",
     "registrationFailed": "Registration failed. Please try again."
   },
@@ -36,6 +41,13 @@
     "gallerySubtitle": "Select from your photos",
     "dailyTip": "Daily Tip",
     "tipText": "Ensure to water your crops early morning to prevent evaporation.",
+    "tipText1": "Water crops early in the morning to reduce evaporation and leaf stress.",
+    "tipText2": "Remove infected leaves quickly and keep them away from healthy plants.",
+    "tipText3": "Check the underside of leaves for pests before they spread.",
+    "tipText4": "Leave enough space between plants so air can move through the crop.",
+    "tipText5": "Avoid watering leaves at night because moisture can help fungi grow.",
+    "tipText6": "Clean pruning tools between plants to reduce disease transfer.",
+    "tipText7": "Rotate crops between seasons to lower soil-borne disease risk.",
     "highRisk": "HIGH RISK",
     "mediumRisk": "MEDIUM RISK",
     "lowRisk": "LOW RISK",
@@ -84,7 +96,11 @@
     "noPredictions": "No predictions yet.",
     "firstDiagnosis": "Take a photo to get your first diagnosis!",
     "healthy": "Healthy",
-    "diseased": "Diseased"
+    "diseased": "Diseased",
+    "onlineSource": "Online",
+    "offlineSource": "Offline",
+    "cameraSource": "Camera",
+    "gallerySource": "Gallery"
   },
   "profile": {
     "title": "My Profile",
@@ -96,7 +112,6 @@
   },
   "settings": {
     "title": "Settings",
-    "pushNotifications": "Push Notifications",
     "offlineMode": "Offline Mode",
     "language": "Language",
     "modelMode": "Model Mode",
@@ -120,7 +135,13 @@
     "noPredictions": "No predictions recorded yet."
   },
   "sync": {
+    "waitingTitle": "Waiting to sync",
+    "waitingMessage": "{count} offline prediction(s) saved on this device.",
+    "syncingTitle": "Syncing offline results",
+    "syncingMessage": "Uploading {count} queued prediction(s)...",
     "syncComplete": "Sync Complete",
-    "syncMessage": "{count} offline prediction(s) synced successfully!"
+    "syncMessage": "{count} offline prediction(s) synced successfully!",
+    "syncFailedTitle": "Sync still pending",
+    "syncFailedMessage": "{count} offline prediction(s) could not sync yet. Keep the backend running and try again."
   }
 }
