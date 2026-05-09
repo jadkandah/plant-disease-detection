@@ -1,12 +1,14 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import apiClient from '../../services/auth/apiClient';
 import { useTranslation } from '../../store/LanguageContext';
+import { useModelMode } from '../../store/ModelModeContext';
+import { getOfflineQueue, OfflinePredictionResult } from '../../services/offline/offlineQueue';
 
 interface PredictionItem {
-  id: number;
+  id: number | string;
   crop_name: string;
   disease_name_en: string;
   confidence: number;
@@ -20,15 +22,13 @@ interface PredictionItem {
 export default function HistoryScreen() {
   const [predictions, setPredictions] = useState<PredictionItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const { t, isRTL } = useTranslation();
+  const { isOnlineMode } = useModelMode();
 
-  const fetchHistory = async (crop?: string) => {
+  const fetchOnlineHistory = async () => {
     try {
       setLoading(true);
-      const params: any = {};
-      if (crop) params.crop = crop;
-      const response = await apiClient.get('/history/', { params });
+      const response = await apiClient.get('/history/');
       setPredictions(response.data.results || response.data || []);
     } catch (error) {
       console.log('Failed to fetch history:', error);
@@ -37,9 +37,38 @@ export default function HistoryScreen() {
     }
   };
 
-  useFocusEffect(useCallback(() => { fetchHistory(); }, []));
+  const loadOfflineHistory = async () => {
+    try {
+      setLoading(true);
+      const queue = await getOfflineQueue();
+      const mapped: PredictionItem[] = queue.map((item: OfflinePredictionResult) => ({
+        id: item.id,
+        crop_name: item.cropName,
+        disease_name_en: item.diseaseNameEn,
+        confidence: item.confidence,
+        is_healthy: item.isHealthy,
+        predicted_at: item.predictedAt,
+        source_type: item.sourceType,
+        model_mode: 'offline' as const,
+        sync_status: 'pending' as const,
+      }));
+      setPredictions(mapped);
+    } catch (error) {
+      console.log('Failed to load offline history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleSearch = () => { fetchHistory(searchQuery || undefined); };
+  useFocusEffect(
+    useCallback(() => {
+      if (isOnlineMode) {
+        fetchOnlineHistory();
+      } else {
+        loadOfflineHistory();
+      }
+    }, [isOnlineMode])
+  );
 
   const renderItem = ({ item }: { item: PredictionItem }) => {
     const isOffline = item.model_mode === 'offline';
@@ -61,7 +90,6 @@ export default function HistoryScreen() {
         </View>
         {!item.is_healthy && <Text style={[styles.diseaseName, isRTL && styles.rtlText]}>{item.disease_name_en}</Text>}
         <View style={[styles.cardFooter, isRTL && styles.rtlRow]}>
-          <Text style={styles.confidence}>{t('result.confidence')}: {(item.confidence * 100).toFixed(1)}%</Text>
           <Text style={styles.sourceText}>{captureLabel}</Text>
           <Text style={styles.date}>{new Date(item.predicted_at).toLocaleDateString()}</Text>
         </View>
@@ -72,12 +100,14 @@ export default function HistoryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={[styles.title, isRTL && styles.rtlText]}>{t('history.title')}</Text>
-      <View style={[styles.searchRow, isRTL && styles.rtlRow]}>
-        <TextInput style={[styles.searchInput, isRTL && { textAlign: 'right' }]} placeholder={t('history.searchPlaceholder')} value={searchQuery} onChangeText={setSearchQuery} onSubmitEditing={handleSearch} />
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchButtonText}>{t('history.filter')}</Text>
-        </TouchableOpacity>
+
+      {/* Mode indicator */}
+      <View style={[styles.modeBar, isOnlineMode ? styles.modeOnline : styles.modeOffline]}>
+        <Text style={[styles.modeText, { color: isOnlineMode ? '#1565C0' : '#E65100' }]}>
+          {isOnlineMode ? t('home.modelOnline') : t('home.modelOffline')}
+        </Text>
       </View>
+
       {loading ? (
         <View style={styles.centerBox}><ActivityIndicator size="large" color="#2E7D32" /></View>
       ) : predictions.length === 0 ? (
@@ -97,10 +127,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: 'bold', color: '#2E7D32', marginBottom: 16 },
   rtlText: { textAlign: 'right' },
   rtlRow: { flexDirection: 'row-reverse' },
-  searchRow: { flexDirection: 'row', marginBottom: 16 },
-  searchInput: { flex: 1, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ccc', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, marginRight: 8 },
-  searchButton: { backgroundColor: '#2E7D32', paddingHorizontal: 16, borderRadius: 8, justifyContent: 'center' },
-  searchButtonText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  modeBar: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, marginBottom: 16 },
+  modeOnline: { backgroundColor: '#E3F2FD' },
+  modeOffline: { backgroundColor: '#FFF3E0' },
+  modeText: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { fontSize: 18, color: '#666', fontWeight: 'bold' },
   emptySubtext: { fontSize: 14, color: '#999', marginTop: 6 },
@@ -118,7 +148,6 @@ const styles = StyleSheet.create({
   sourceBadgeOffline: { backgroundColor: '#FFF3E0', color: '#E65100' },
   diseaseName: { fontSize: 15, color: '#666', marginBottom: 8 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  confidence: { fontSize: 13, color: '#888' },
   sourceText: { fontSize: 13, color: '#888' },
   date: { fontSize: 13, color: '#888' },
 });

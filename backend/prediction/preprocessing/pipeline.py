@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 from .quality import check_quality
 from .sam_utils import extract_leaf
-from .leaf_check import is_leaf_image
 
 
 def preprocess_image(file, mode="offline"):
@@ -22,12 +21,6 @@ def preprocess_image(file, mode="offline"):
     if not is_valid:
         print(f"[pipeline] Quality check FAILED: {reason}")
         return None, f"Rejected: {reason}"
-
-    # Reject obvious non-leaf inputs before classification.
-    is_leaf, ratio = is_leaf_image(image)
-    
-    if not is_leaf:
-        return None, f"Rejected: Not a leaf (ratio={ratio:.2f})"
 
     # 2. Online mode → SAM leaf extraction (if available)
     if mode == "online":

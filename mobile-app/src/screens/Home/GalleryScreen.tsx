@@ -22,9 +22,6 @@ export default function GalleryScreen({ navigation }: any) {
   const getUploadErrorMessage = (error: any) => {
     const backendMessage = error?.response?.data?.detail || error?.response?.data?.error || error?.message;
     const message = String(backendMessage || '');
-    if (message.toLowerCase().includes('not a crop image') || message.toLowerCase().includes('not a leaf')) {
-      return t('gallery.notCropImage');
-    }
     if (message.toLowerCase().includes('timeout') || error?.code === 'ECONNABORTED') {
       return t('gallery.requestTimeout');
     }
