@@ -25,10 +25,13 @@ class PredictView(generics.CreateAPIView):
         mode = serializer.validated_data.get('mode', 'offline')
 
         # ──────────────────────────────────────────
-        # 2. Preprocessing pipeline (quality check + optional SAM)
+        # 2. Backend preprocessing (SAM + backend-only transforms)
         #
-        #   🟢 Offline: image → quality check → MobileNetV3-Small
-        #   🔵 Online:  image → quality check → SAM → ResNet50 image-only 512
+        #   Common quality checks (blur, brightness, contrast) are
+        #   performed on the FRONTEND before upload.
+        #
+        #   🟢 Offline: preprocessed image → MobileNetV3-Small
+        #   🔵 Online:  preprocessed image → SAM → ResNet50 image-only 512
         # ──────────────────────────────────────────
         print(f"[predict] Mode: {mode}")
         preprocessed_image, preprocess_status = preprocess_image(image_file, mode=mode)

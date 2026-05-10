@@ -7,6 +7,7 @@ import apiClient from '../../services/auth/apiClient';
 import { useNetworkStatus } from '../../services/network/useNetworkStatus';
 import { enqueueOfflineResult } from '../../services/offline/offlineQueue';
 import { predictOffline } from '../../services/offline/localInference';
+import { preprocessImage } from '../../services/preprocessing/imagePreprocessing';
 import { useTranslation } from '../../store/LanguageContext';
 import { useModelMode } from '../../store/ModelModeContext';
 
@@ -54,10 +55,22 @@ export default function GalleryScreen({ navigation }: any) {
     console.log('[Gallery] uploadImage called, isConnected:', isConnected, 'isOnlineMode:', isOnlineMode, 'platform:', Platform.OS);
     try {
       setIsProcessing(true);
+
+      // ── Frontend preprocessing (quality checks + orientation correction + resize) ──
+      setStatusMessage(t('gallery.preprocessingImage') || 'Checking image quality…');
+      const preprocessed = await preprocessImage(imageUri);
+      if (!preprocessed.valid) {
+        setStatusMessage(null);
+        setErrorMessage(preprocessed.reason);
+        Alert.alert(t('common.error'), preprocessed.reason);
+        return;
+      }
+      const processedUri = preprocessed.processedUri;
+
       setStatusMessage(t('gallery.analyzingImage'));
 
       if (!isConnected || !isOnlineMode) {
-        const prediction = await predictOffline(imageUri);
+        const prediction = await predictOffline(processedUri);
         const id = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         await enqueueOfflineResult({
           id,
@@ -79,18 +92,18 @@ export default function GalleryScreen({ navigation }: any) {
       const formData = new FormData();
 
       if (Platform.OS === 'web') {
-        // On web, imageUri is a blob URL — fetch it and create a proper File
-        const response = await fetch(imageUri);
+        // On web, processedUri is a blob URL from preprocessing
+        const response = await fetch(processedUri);
         const blob = await response.blob();
         const filename = 'upload.jpg';
         const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
         formData.append('image', file);
       } else {
         // On native (iOS/Android), use the RN-style object
-        const filename = imageUri.split('/').pop() || 'gallery.jpg';
+        const filename = processedUri.split('/').pop() || 'gallery.jpg';
         const match = /\.(\w+)$/.exec(filename);
         const fileType = match ? `image/${match[1]}` : 'image/jpeg';
-        formData.append('image', { uri: imageUri, name: filename, type: fileType } as any);
+        formData.append('image', { uri: processedUri, name: filename, type: fileType } as any);
       }
 
       formData.append('source_type', 'gallery');

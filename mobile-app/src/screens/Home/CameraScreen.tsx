@@ -6,6 +6,7 @@ import apiClient from '../../services/auth/apiClient';
 import { useNetworkStatus } from '../../services/network/useNetworkStatus';
 import { enqueueOfflineResult } from '../../services/offline/offlineQueue';
 import { predictOffline } from '../../services/offline/localInference';
+import { preprocessImage } from '../../services/preprocessing/imagePreprocessing';
 import { useTranslation } from '../../store/LanguageContext';
 import { useModelMode } from '../../store/ModelModeContext';
 
@@ -59,9 +60,20 @@ export default function CameraScreen({ navigation }: any) {
           return;
         }
 
+        // ── Frontend preprocessing (quality checks + resize) ──
+        setStatusMessage(t('gallery.preprocessingImage') || 'Checking image quality…');
+        const preprocessed = await preprocessImage(photo.uri);
+        if (!preprocessed.valid) {
+          setStatusMessage(null);
+          setErrorMessage(preprocessed.reason);
+          Alert.alert(t('common.error'), preprocessed.reason);
+          return;
+        }
+        const processedUri = preprocessed.processedUri;
+
         if (!isConnected || !isOnlineMode) {
           setStatusMessage(t('gallery.analyzingImage'));
-          const prediction = await predictOffline(photo.uri);
+          const prediction = await predictOffline(processedUri);
           const id = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           await enqueueOfflineResult({
             id,
@@ -83,15 +95,15 @@ export default function CameraScreen({ navigation }: any) {
         setStatusMessage(t('gallery.analyzingImage'));
 
         if (Platform.OS === 'web') {
-          const resp = await fetch(photo.uri);
+          const resp = await fetch(processedUri);
           const blob = await resp.blob();
           const file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' });
           formData.append('image', file);
         } else {
-          const filename = photo.uri.split('/').pop() || 'photo.jpg';
+          const filename = processedUri.split('/').pop() || 'photo.jpg';
           const match = /\.(\w+)$/.exec(filename);
           const fileType = match ? `image/${match[1]}` : 'image/jpeg';
-          formData.append('image', { uri: photo.uri, name: filename, type: fileType } as any);
+          formData.append('image', { uri: processedUri, name: filename, type: fileType } as any);
         }
 
         formData.append('source_type', 'camera');
