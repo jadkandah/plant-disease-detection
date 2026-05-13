@@ -156,6 +156,6 @@
     ]
   },
   "runtime": "onnxruntime-web",
-  "source_checkpoint": "saved_models/mobilenet_v3_small_512_epochs25_full_data_set.pth",
+  "source_checkpoint": "saved_models/mobilenet_v3_small_512_background_removed_epochs25.pth",
   "source_manifest": null
 }

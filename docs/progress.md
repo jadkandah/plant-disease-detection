@@ -1,542 +1,179 @@
-1/11/2025
-######
-Research & Dataset Selection
-We researched publicly available datasets of plant diseases. The chosen datasets were:
-Dataset	Reason for Use
-vipoooool/new-plant-diseases-dataset:
-Base dataset covering multiple crops and disease types. Useful for general plant disease classification.
-habibulbasher01644/olive-leaf-image-dataset:
-Contains images of olive leaves, including common diseases in Jordan (like Peacock Spot).
-serhathoca/zeytin	Additional:
-olive leaf images for better representation of olive diseases.
-kushagra3204/wheat-plant-diseases:
-Focused wheat plant disease dataset to include key crops cultivated in Jordan.
-Why classification and not object detection:
-Object detection identifies and localizes multiple objects in an image, which is more complex and resource-intensive.
-Our goal is to classify images of leaves by disease type, which is simpler and sufficient for early detection and decision-making in agriculture.
-Classification allows faster model training and easier integration into mobile/field apps for farmers.
-######
-Dataset Download
-Kaggle datasets were downloaded using the Kaggle CLI.
-Any other datasets (URLs) were downloaded using urllib.
-Archives (.zip, .tar, .tgz) were extracted automatically.
-Olive Leaf Image Dataset — https://www.kaggle.com/datasets/habibulbasher01644/olive-leaf-image-dataset
-kaggle.com
+# Progress
 
-Olive Leaf Disease Dataset (Zeytin) — https://www.kaggle.com/datasets/serhathoca/zeytin
-kaggle.com
+This page records the main project progress in a cleaned format.
 
-Wheat Plant Diseases — https://www.kaggle.com/datasets/kushagra3204/wheat-plant-diseases
-kaggle.com
+## Dataset Work
 
-20k+ Multi‑Class Crop Disease Images — https://www.kaggle.com/datasets/jawadali1045/20k-multi-class-crop-disease-images
+The project started by researching public plant disease datasets and selecting
+datasets that cover common crop diseases.
 
-Main dataset: https://www.kaggle.com/datasets/vipoooool/new-plant-diseases-dataset?utm_source=chatgpt.com
-#####
-7-8 NOV
+Datasets were downloaded from Kaggle and other public sources, then merged into
+a unified structure:
 
-NEW STRUCTURE OF THE DATASET 
+```text
 jordan_dataset/
-├── train/
-│   ├── Apple/
-│   │   ├── Apple_scab/
-│   │   └── healthy/
-│   ├── Olive/
-│   │   ├── Peacock_spot/
-│   │   └── healthy/
-│   ├── Wheat/
-│   │   ├── Leaf_rust/
-│   │   └── healthy/
-├── test/
-│   ├── Apple/
-│   │   ├── Apple_scab/
-│   │   └── healthy/
-│   ├── Olive/
-│   │   ├── Peacock_spot/
-│   │   └── healthy/
-│   ├── Wheat/
-│   │   ├── Leaf_rust/
-│   │   └── healthy/
-├── valid/
-│   ├── Apple/
-│   │   ├── Apple_scab/
-│   │   └── healthy/
-│   ├── Olive/
-│   │   ├── Peacock_spot/
-│   │   └── healthy/
-│   ├── Wheat/
-│   │   ├── Leaf_rust/
-│   │   └── healthy/
-
-
-####3 these were used in the code to help us merge the datasets and seprate them for training testing and validation 
-├── metadata.csv
-├── metadata_train.csv
-├── metadata_val.csv
-├── metadata_test.csv
-└── class_counts.csv
-
-#######
-in the code we added data Augmentation (manipulation) for classes who got less than 500 images.
-we used RandomRotate90(), Flip(), Transpose(), RandomBrightnessContrast(), ShiftScaleRotate()
-####
-11 NOV
-
-Made a uml diagram using PlantUML
-![alt text](../out/docs/scratch/image.png)
-This was only a test
-
-
-####
-8 Mar
-
-Ran an mlflow experiment for online models and offline models.
-online models:
-resnet_50
-efficientnet_b0
-
-offline models:
-mobilenet_v3_small
-mobilenet_v3_large
-efficientnet_b0
-
-all with:
-    batch_size: 2
-    learning_rate: 0.001
-    epochs: 5
-    image_size: 224
-
-results:
-=== ONLINE MODELS ===
-Best run: efficientnet_b0_224
-Model: efficientnet_b0
-Overall score: 0.9500
-Test accuracy: 0.7401
-Test mIoU: 0.3367
-Parameters: 4065193
-Model size (MB): 15.80
-Training time (sec): 3907.87
-
---- ONLINE MODELS: Special Awards ---
-Best accuracy: efficientnet_b0_224 (0.7401)
-Best mIoU: efficientnet_b0_224 (0.3367)
-Most parameter-efficient: efficientnet_b0_224 (4065193)
-Smallest model: efficientnet_b0_224 (15.80 MB)
-Fastest training: resnet50_224 (3488.22 sec)
-
-=== OFFLINE MODELS ===
-Best run: mobilenet_v3_small_224
-Model: mobilenet_v3_small
-Overall score: 0.9896
-Test accuracy: 0.7287
-Test mIoU: 0.2896
-Parameters: 1563981
-Model size (MB): 6.10
-Training time (sec): 2598.00
-
---- OFFLINE MODELS: Special Awards ---
-Best accuracy: mobilenet_v3_small_224 (0.7287)
-Best mIoU: efficientnet_b0_224 (0.2909)
-Most parameter-efficient: mobilenet_v3_small_224 (1563981)
-Smallest model: mobilenet_v3_small_224 (6.10 MB)
-Fastest training: mobilenet_v3_small_224 (2598.00 sec)
-
-Top ONLINE ranking:
- rank            run_name      model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
-    1 efficientnet_b0_224 efficientnet_b0  0.740114   0.336728       4065193.0      15.795885           0.95
-    2        resnet50_224        resnet50  0.631634   0.240571      23600237.0      90.332159           0.05
-
-Top OFFLINE ranking:
- rank               run_name         model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
-    1 mobilenet_v3_small_224 mobilenet_v3_small  0.728668   0.289563       1563981.0       6.097002       0.989630
-    2    efficientnet_b0_224    efficientnet_b0  0.706296   0.290867       4065193.0      15.795885       0.329988
-    3 mobilenet_v3_large_224 mobilenet_v3_large  0.686785   0.265718       4259677.0      16.449530       0.120748
-
-notes: Online model choice based on this is 'efficientnet_b0' and Offline model choice based on this is 'mobilenet_v3_small', but this is due to small number of epochs in resnet50 that the result it gave was efficientnet_b0.
-
-Next I will increase epochs but keep an early stop in place to the values bellow:
-
-    ResNet50: 40
-    EfficientNet-B0: 30
-    MobileNetV3 Small: 25
-    MobileNetV3 Large: 30
-
-patience: 5
-min_delta: 0.001
-batch_size: 4
-
-####
-9 Mar
-
-Results of training for more epochs letting early stop finish the training with the following:
-    ResNet50: 40
-    EfficientNet-B0: 30
-    MobileNetV3 Small: 25
-    MobileNetV3 Large: 30
-
-patience: 5
-min_delta: 0.001
-batch_size: 4
-
-The ranking stayed the same.
-
-=== ONLINE MODELS ===
-Best run: efficientnet_b0_224_epochs30
-Model: efficientnet_b0
-Overall score: 0.9815
-Test accuracy: 0.7666
-Test mIoU: 0.3442
-Parameters: 4065193
-Model size (MB): 15.80
-Training time (sec): 3193.20
-
---- ONLINE MODELS: Special Awards ---
-Best accuracy: efficientnet_b0_224_epochs30 (0.7666)
-Best mIoU: efficientnet_b0_224_epochs30 (0.3442)
-Most parameter-efficient: efficientnet_b0_224_epochs30 (4065193)
-Smallest model: efficientnet_b0_224 (15.80 MB)
-Fastest training: resnet50_224_epochs40 (2772.16 sec)
-
-=== OFFLINE MODELS ===
-Best run: mobilenet_v3_small_224_epochs25
-Model: mobilenet_v3_small
-Overall score: 0.7945
-Test accuracy: 0.7638
-Test mIoU: 0.3384
-Parameters: 1563981
-Model size (MB): 6.10
-Training time (sec): 2040.09
-
---- OFFLINE MODELS: Special Awards ---
-Best accuracy: mobilenet_v3_large_224_epochs30 (0.7901)
-Best mIoU: mobilenet_v3_large_224_epochs30 (0.3891)
-Most parameter-efficient: mobilenet_v3_small_224_epochs25 (1563981)
-Smallest model: mobilenet_v3_small_224 (6.10 MB)
-Fastest training: mobilenet_v3_small_224_epochs25 (2040.09 sec)
-
-Top ONLINE ranking:
- rank                     run_name      model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
-    1 efficientnet_b0_224_epochs30 efficientnet_b0  0.766649   0.344221       4065193.0      15.799253       0.981464
-    2        resnet50_224_epochs40        resnet50  0.753382   0.338275      23600237.0      90.335001       0.822023
-    3          efficientnet_b0_224 efficientnet_b0  0.740114   0.336728       4065193.0      15.795885       0.734774
-    4                 resnet50_224        resnet50  0.631634   0.240571      23600237.0      90.332159       0.018475
-
-Top OFFLINE ranking:
- rank                        run_name         model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
-    1 mobilenet_v3_small_224_epochs25 mobilenet_v3_small  0.763788   0.338379       1563981.0       6.099131       0.794502
-    2 mobilenet_v3_large_224_epochs30 mobilenet_v3_large  0.790062   0.389062       4259677.0      16.452242       0.660598
-    3    efficientnet_b0_224_epochs30    efficientnet_b0  0.765609   0.347141       4065193.0      15.799253       0.559841
-    4          mobilenet_v3_small_224 mobilenet_v3_small  0.728668   0.289563       1563981.0       6.097002       0.554675
-    5             efficientnet_b0_224    efficientnet_b0  0.706296   0.290867       4065193.0      15.795885       0.101562
-    6          mobilenet_v3_large_224 mobilenet_v3_large  0.686785   0.265718       4259677.0      16.449530       0.073020
-
-####
-23 Mar
-Ran resnet50_multimodal with full data and generated weather data that was used to pull temp, humididty, soil temp, soil humidity
-with the following setup:
-
-BATCH_SIZE = 2
-NUM_EPOCHS = 20
-LEARNING_RATE = 1e-3
-IMAGE_SIZE = 512
-PATIENCE = 5
-SEED = 42
-
-resulting in the following:
-
-Test Loss: 1.9609
-Test Accuracy: 0.6846 (on 8551 samples)
-Test mIoU: 0.4057
-
-Next we will rerun the prevoius models without the weather meta data using the full dataset to see which results give better predictions.
-####
-28 MAR
-
-Ran multimodal_train.py that uses a sequential model build to process both the images and the metadata_weather.csv with sensible data (but has no deviation from perfect) and the entire dataset.
-with the following parameters:
-
-BATCH_SIZE = 6
-NUM_EPOCHS = 30
-IMAGE_SIZE = 512
-PATIENCE = 6
-SEED = 42
-
-and the results:
-
-Test Loss     : 0.7657
-Test Accuracy : 0.9891 (on 8551 samples)
-Test mIoU     : 0.9343
-Test Macro-F1 : 0.9634
-####
-29 MAR 
-
-Ran the Offline models again but with full data set.
-with the following parameters:
-   batch_size: 4
-    learning_rate: 0.001
-    epochs: 25,30,30
-    image_size: 512
-
-results:
-
-=== ONLINE MODELS ===
-Best run: efficientnet_b0_224_epochs30
-Model: efficientnet_b0
-Overall score: 0.9815
-Test accuracy: 0.7666
-Test mIoU: 0.3442
-Parameters: 4065193
-Model size (MB): 15.80
-Training time (sec): 3193.20
-
---- ONLINE MODELS: Special Awards ---
-Best accuracy: efficientnet_b0_224_epochs30 (0.7666)
-Best mIoU: efficientnet_b0_224_epochs30 (0.3442)
-Most parameter-efficient: efficientnet_b0_224_epochs30 (4065193)
-Smallest model: efficientnet_b0_224 (15.80 MB)
-Fastest training: resnet50_224_epochs40 (2772.16 sec)
-
-=== OFFLINE MODELS ===
-Best run: mobilenet_v3_small_512_epochs25_full_data_set
-Model: mobilenet_v3_small
-Overall score: 0.9344
-Test accuracy: 0.9875
-Test mIoU: 0.9052
-Parameters: 1574231
-Model size (MB): 6.14
-Training time (sec): 23424.24
-
---- OFFLINE MODELS: Special Awards ---
-Best accuracy: efficientnet_b0_512_epochs30_full_data_set (0.9881)
-Best mIoU: mobilenet_v3_small_512_epochs25_full_data_set (0.9052)
-Most parameter-efficient: mobilenet_v3_small_224_epochs25 (1563981)
-Smallest model: mobilenet_v3_small_224 (6.10 MB)
-Fastest training: mobilenet_v3_small_224_epochs25 (2040.09 sec)
-
-Top ONLINE ranking:
- rank                     run_name      model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
-    1 efficientnet_b0_224_epochs30 efficientnet_b0  0.766649   0.344221       4065193.0      15.799253       0.981464
-    2        resnet50_224_epochs40        resnet50  0.753382   0.338275      23600237.0      90.335001       0.822023
-    3          efficientnet_b0_224 efficientnet_b0  0.740114   0.336728       4065193.0      15.795885       0.734774
-    4                 resnet50_224        resnet50  0.631634   0.240571      23600237.0      90.332159       0.018475
-
-Top OFFLINE ranking:
- rank                                      run_name         model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
-    1 mobilenet_v3_small_512_epochs25_full_data_set mobilenet_v3_small  0.987488   0.905224       1574231.0       6.144800       0.934441***
-    2    efficientnet_b0_512_epochs30_full_data_set    efficientnet_b0  0.988073   0.903903       4078003.0      15.854101       0.712813***
-    3 mobilenet_v3_large_512_epochs30_full_data_set mobilenet_v3_large  0.985851   0.892892       4272487.0      16.510904       0.707540***
-    4               mobilenet_v3_small_224_epochs25 mobilenet_v3_small  0.763788   0.338379       1563981.0       6.099131       0.456845
-    5                        mobilenet_v3_small_224 mobilenet_v3_small  0.728668   0.289563       1563981.0       6.097002       0.397063
-    6               mobilenet_v3_large_224_epochs30 mobilenet_v3_large  0.790062   0.389062       4259677.0      16.452242       0.282768
-    7                  efficientnet_b0_224_epochs30    efficientnet_b0  0.765609   0.347141       4065193.0      15.799253       0.255624
-    8                           efficientnet_b0_224    efficientnet_b0  0.706296   0.290867       4065193.0      15.795885       0.133153
-    9                        mobilenet_v3_large_224 mobilenet_v3_large  0.686785   0.265718       4259677.0      16.449530       0.109846
-   10               mobilenet_v3_small_224_epochs25 mobilenet_v3_small       NaN        NaN             NaN            NaN            NaN
-####
-29 MAR 
-
-Note: All this was tested on mobilenet_v3_small_512_epochs25_full_data_set.pth because it only uses the images and so what happens here is assumed to have happened with the large (online) sequential model that also uses metadata that also had very high accuracy.
-
-Issue was found due to very high accuracy in all train val and test made a code to blur the ceter of images (the leaf) to see if model guesses due to background and results were:
-
-Total images tested: 8552
-Normal accuracy: 8445/8552 = 98.7488%
-Blurry accuracy: 1782/8552 = 20.8372%
-
-Which is Okay.
-
-But still did not make sense so used GRAD CAM on 10 random images from each disease of every crop and results show that in most images the model relies on top left corner of image (background).
-
-So as a solution the following code was added to the transformations prior to training (not saved to the dataset):
-' inside A.Compose([
-            ...
-
-            A.CoarseDropout(
-                max_holes=8,
-                max_height=64,
-                max_width=64,
-                min_holes=1,
-                fill_value=0,
-                p=0.5
-            ),
-            A.RandomShadow(p=0.3),
-            A.GaussianBlur(p=0.2)
-
-            ...
-            ]) and also scale and ratio were changed to scale=(0.6, 1.0), ratio=(0.75, 1.33)
-
-I have not yet rerun the model but the changes are done so next I will run and see if there is improvement.
-####
-20 Apr
-
-After finding the issue with the very high high accuracies, GRAD_CAM revealed the models were cheating using the background so we romved the background with something called SAM and reran the offline models and also ran the multi_modal model that uses both images and metadata with the following setup:
-
-- experiment_name: plant_disease_offline_models
-    batch_size: 4
-    learning_rate: 0.001
-    epochs: 25/30/30
-    image_size: 512
-
-- experiment_name: plant_disease_online_models
-    batch_size: 4
-    learning_rate: 0.001
-    epochs: 40
-    image_size: 256
-
-results:
-=======================
-Running model ranking...
-=======================
-
-
-=== ONLINE MODELS ===
-Best run: multimodal_resnet50_background_removed_256_epochs40
-Model: multimodal_resnet50
-Overall score: 0.9000
-Test accuracy: 0.8940
-Test mIoU: 0.6869
-Parameters: 24838135
-Model size (MB): 95.10
-Training time (sec): 8623.05
-
---- ONLINE MODELS: Special Awards ---
-Best accuracy: multimodal_resnet50_background_removed_256_epochs40 (0.8940)
-Best mIoU: multimodal_resnet50_background_removed_256_epochs40 (0.6869)
-Most parameter-efficient: efficientnet_b0_224_epochs30 (4065193)
-Smallest model: efficientnet_b0_224 (15.80 MB)
-Fastest training: resnet50_224_epochs40 (2772.16 sec)
-
-=== OFFLINE MODELS ===
-Best run: mobilenet_v3_small_512_epochs25_full_data_set
-Model: mobilenet_v3_small
-Overall score: 0.9504
-Test accuracy: 0.9875
-Test mIoU: 0.9052
-Parameters: 1574231
-Model size (MB): 6.14
-Training time (sec): 23424.24
-
---- OFFLINE MODELS: Special Awards ---
-Best accuracy: efficientnet_b0_512_epochs30_full_data_set (0.9881)
-Best mIoU: mobilenet_v3_small_512_epochs25_full_data_set (0.9052)
-Most parameter-efficient: mobilenet_v3_small_224_epochs25 (1563981)
-Smallest model: mobilenet_v3_small_224 (6.10 MB)
-Fastest training: mobilenet_v3_small_224_epochs25 (2040.09 sec)
-
-Top ONLINE ranking:
- rank                                            run_name          model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
-    1 multimodal_resnet50_background_removed_256_epochs40 multimodal_resnet50  0.894046   0.686934      24838135.0      95.096337       0.900000***
-    2                        efficientnet_b0_224_epochs30     efficientnet_b0  0.766649   0.344221       4065193.0      15.799253       0.474364
-    3                               resnet50_224_epochs40            resnet50  0.753382   0.338275      23600237.0      90.335001       0.378111
-    4                                 efficientnet_b0_224     efficientnet_b0  0.740114   0.336728       4065193.0      15.795885       0.369935
-    5                                        resnet50_224            resnet50  0.631634   0.240571      23600237.0      90.332159       0.046860
-
-Top OFFLINE ranking:
- rank                                           run_name         model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
-    1      mobilenet_v3_small_512_epochs25_full_data_set mobilenet_v3_small  0.987488   0.905224       1574231.0       6.144800       0.950388
-    2 mobilenet_v3_small_512_background_removed_epochs25 mobilenet_v3_small  0.947961   0.782563       1574231.0       6.146443       0.848114***
-    3         efficientnet_b0_512_epochs30_full_data_set    efficientnet_b0  0.988073   0.903903       4078003.0      15.854101       0.737994
-    4      mobilenet_v3_large_512_epochs30_full_data_set mobilenet_v3_large  0.985851   0.892892       4272487.0      16.510904       0.729388
-    5 mobilenet_v3_large_512_background_removed_epochs30 mobilenet_v3_large  0.947023   0.782819       4272487.0      16.512872       0.619331***
-    6    efficientnet_b0_512_background_removed_epochs30    efficientnet_b0  0.943390   0.776827       4078003.0      15.856475       0.613117***
-    7                    mobilenet_v3_small_224_epochs25 mobilenet_v3_small  0.763788   0.338379       1563981.0       6.099131       0.456845
-    8                             mobilenet_v3_small_224 mobilenet_v3_small  0.728668   0.289563       1563981.0       6.097002       0.397479
-    9                    mobilenet_v3_large_224_epochs30 mobilenet_v3_large  0.790062   0.389062       4259677.0      16.452242       0.283844
-   10                       efficientnet_b0_224_epochs30    efficientnet_b0  0.765609   0.347141       4065193.0      15.799253       0.256083
-   11                                efficientnet_b0_224    efficientnet_b0  0.706296   0.290867       4065193.0      15.795885       0.134535
-   12                             mobilenet_v3_large_224 mobilenet_v3_large  0.686785   0.265718       4259677.0      16.449530       0.110666
-   13 mobilenet_v3_small_512_background_removed_epochs25 mobilenet_v3_small       NaN        NaN             NaN            NaN            NaN
-   14                    mobilenet_v3_small_224_epochs25 mobilenet_v3_small       NaN        NaN             NaN            NaN            NaN
-
-All requested tasks completed.
-
-The results were not great for the multimodal model, the issue with the accuracy being lower than the offline models is due to 3 main reasons:
-1. The image size it trained on is 256 while all the other trained on 512.
-2. There are NaN rows in the metadata that need to be cleaned.
-3. The patience chosen for it as 6 (while the others had 5) is still not enough due to how large this model is.
-
-So after fixing these issues I will rerun the model again and see what happens.
-####
-I reran the mulitmodal model, this time with the following paramters:
-
-- experiment_name: plant_disease_online_models
-    batch_size: 4
-    learning_rate: 0.001
-    epochs: 40
-    image_size: 512
-
-and also:
-    cleaned images and metadata but nothing was removed there was nothing to clean
-
-results:
-=== ONLINE MODELS ===
-Best run: multimodal_resnet50_background_removed_512_epochs40
-Model: multimodal_resnet50
-Overall score: 0.9000
-Test accuracy: 0.9544
-Test mIoU: 0.8024
-Parameters: 24838135
-Model size (MB): 95.10
-Training time (sec): 71055.44
-
---- ONLINE MODELS: Special Awards ---
-Best accuracy: multimodal_resnet50_background_removed_512_epochs40 (0.9544)
-Best mIoU: multimodal_resnet50_background_removed_512_epochs40 (0.8024)
-Most parameter-efficient: efficientnet_b0_224_epochs30 (4065193)
-Smallest model: efficientnet_b0_224 (15.80 MB)
-Fastest training: resnet50_224_epochs40 (2772.16 sec)
-
-=== OFFLINE MODELS ===
-Best run: mobilenet_v3_small_512_epochs25_full_data_set
-Model: mobilenet_v3_small
-Overall score: 0.9504
-Test accuracy: 0.9875
-Test mIoU: 0.9052
-Parameters: 1574231
-Model size (MB): 6.14
-Training time (sec): 23424.24
-
---- OFFLINE MODELS: Special Awards ---
-Best accuracy: efficientnet_b0_512_epochs30_full_data_set (0.9881)
-Best mIoU: mobilenet_v3_small_512_epochs25_full_data_set (0.9052)
-Most parameter-efficient: mobilenet_v3_small_224_epochs25 (1563981)
-Smallest model: mobilenet_v3_small_224 (6.10 MB)
-Fastest training: mobilenet_v3_small_224_epochs25 (2040.09 sec)
-
-Top ONLINE ranking:
- rank                                            run_name          model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
-    1 multimodal_resnet50_background_removed_512_epochs40 multimodal_resnet50  0.954407   0.802446      24838135.0      95.096337       0.900000***
-    2 multimodal_resnet50_background_removed_256_epochs40 multimodal_resnet50  0.894046   0.686934      24838135.0      95.096337       0.790882
-    3                        efficientnet_b0_224_epochs30     efficientnet_b0  0.766649   0.344221       4065193.0      15.799253       0.413528
-    4                                 efficientnet_b0_224     efficientnet_b0  0.740114   0.336728       4065193.0      15.795885       0.329437
-    5                               resnet50_224_epochs40            resnet50  0.753382   0.338275      23600237.0      90.335001       0.319835
-    6                                        resnet50_224            resnet50  0.631634   0.240571      23600237.0      90.332159       0.052455
-
-Top OFFLINE ranking:
- rank                                           run_name         model_name  test_acc  test_miou  num_parameters  model_size_mb  overall_score
-    1      mobilenet_v3_small_512_epochs25_full_data_set mobilenet_v3_small  0.987488   0.905224       1574231.0       6.144800       0.950388
-    2 mobilenet_v3_small_512_background_removed_epochs25 mobilenet_v3_small  0.947961   0.782563       1574231.0       6.146443       0.848114
-    3         efficientnet_b0_512_epochs30_full_data_set    efficientnet_b0  0.988073   0.903903       4078003.0      15.854101       0.737994
-    4      mobilenet_v3_large_512_epochs30_full_data_set mobilenet_v3_large  0.985851   0.892892       4272487.0      16.510904       0.729388
-    5 mobilenet_v3_large_512_background_removed_epochs30 mobilenet_v3_large  0.947023   0.782819       4272487.0      16.512872       0.619331
-    6    efficientnet_b0_512_background_removed_epochs30    efficientnet_b0  0.943390   0.776827       4078003.0      15.856475       0.613117
-    7                    mobilenet_v3_small_224_epochs25 mobilenet_v3_small  0.763788   0.338379       1563981.0       6.099131       0.456845
-    8                             mobilenet_v3_small_224 mobilenet_v3_small  0.728668   0.289563       1563981.0       6.097002       0.397479
-    9                    mobilenet_v3_large_224_epochs30 mobilenet_v3_large  0.790062   0.389062       4259677.0      16.452242       0.283844
-   10                       efficientnet_b0_224_epochs30    efficientnet_b0  0.765609   0.347141       4065193.0      15.799253       0.256083
-   11                                efficientnet_b0_224    efficientnet_b0  0.706296   0.290867       4065193.0      15.795885       0.134535
-   12                             mobilenet_v3_large_224 mobilenet_v3_large  0.686785   0.265718       4259677.0      16.449530       0.110666
-   13 mobilenet_v3_small_512_background_removed_epochs25 mobilenet_v3_small       NaN        NaN             NaN            NaN            NaN
-   14                    mobilenet_v3_small_224_epochs25 mobilenet_v3_small       NaN        NaN             NaN            NaN            NaN
-
-All requested tasks completed.
-
-Next I will split the online model into the following:
-1. Image only model
-2. Metadata only model
-3. Late Fusion multimodal using both images & metadata
-4. Early Fusion multimodal using both images and metadata (already done current multimodal model)
-
-Using the results we will decide which option to go with and see if metadata has actual impact when deciding.
-
-####
+  train/
+  val/
+  test/
+```
+
+The final active dataset contains:
+
+- 11 crop groups.
+- 55 classes.
+- 65,281 images.
+- Train, validation, and test splits.
+
+## Class Coverage
+
+Current crop groups:
+
+- Apple
+- Cauliflower
+- Eggplant
+- Grape
+- Maize
+- Olive
+- Orange
+- Peach
+- Potato
+- Tomato
+- Wheat
+
+The database seed data and model class list use the same `Crop___Disease` class-key format.
+
+## Preprocessing Progress
+
+Implemented preprocessing steps:
+
+- Image loading and RGB conversion.
+- Image validation and corrupted-file handling.
+- Train-time augmentation using Albumentations.
+- ImageNet normalization.
+- Background removal experiments using MobileSAM.
+- Frontend common preprocessing before upload or local inference.
+- Backend-only SAM leaf extraction for online mode.
+- Backend quality-check code kept as a fallback, but the active common path is frontend-side.
+
+## Early Experiments
+
+Initial experiments compared online and offline candidate models with smaller
+image size and fewer epochs.
+
+Models tested:
+
+- ResNet50
+- EfficientNet-B0
+- MobileNetV3-Small
+- MobileNetV3-Large
+
+Metrics tracked:
+
+- Test accuracy
+- Test mIoU
+- Model size
+- Number of parameters
+- Training time
+
+Early results showed that EfficientNet-B0 and MobileNetV3-Small were strong
+candidates, but later full-dataset 512px experiments became more important.
+
+## Current Training Configuration
+
+Current experiment configs are stored in:
+
+- `src/dissdetector/config/online_models.yaml`
+- `src/dissdetector/config/offline_models.yaml`
+
+Online experiment runs include:
+
+- `multimodal_resnet50_background_removed_512_epochs40`
+- `image_only_resnet50_background_removed_512_epochs40`
+- `metadata_only_mlp_background_removed_512_epochs40`
+- `late_fusion_multimodal_resnet50_background_removed_512_epochs40`
+
+Offline experiment runs include:
+
+- `mobilenet_v3_small_512_background_removed_epochs25`
+- `mobilenet_v3_large_512_background_removed_epochs30`
+- `efficientnet_b0_512_background_removed_epochs30`
+
+## Saved Model Results
+
+Important saved model manifests show these results:
+
+| Model | Scope | Test Accuracy | Test mIoU | Size |
+| --- | --- | ---: | ---: | ---: |
+| `image_only_resnet50_background_removed_512_epochs40` | Backend online image-only | 0.9531 | 0.8168 | 90.42 MB |
+| `late_fusion_multimodal_resnet50_background_removed_512_epochs40` | Multimodal experiment | 0.9538 | 0.8141 | 94.73 MB |
+| `metadata_only_mlp_background_removed_512_epochs40` | Metadata-only experiment | 0.0679 | 0.0109 | 0.09 MB |
+| `mobilenet_v3_small_512_background_removed_epochs25` | Offline-oriented image-only | saved checkpoint | used for backend offline mode | 6.2 MB |
+
+The metadata-only model performed poorly by itself, which confirms that weather
+metadata alone is not enough for disease classification in this dataset.
+
+## Backend Progress
+
+Implemented backend features:
+
+- Custom email-based user model.
+- JWT registration, login, refresh, profile, and password change.
+- Disease metadata API.
+- Prediction endpoint with multipart image upload.
+- Online and offline backend inference modes.
+- Prediction history model.
+- Offline history sync endpoint.
+- Admin-only users, predictions, disease CRUD, and dashboard statistics.
+
+## Mobile App Progress
+
+Implemented mobile features:
+
+- Login and sign-up screens.
+- Camera image capture.
+- Gallery image selection.
+- Common frontend preprocessing through `imagePreprocessing.ts`.
+- Online image upload to the backend.
+- Result display with crop and disease information.
+- English and Arabic text support.
+- Model mode context for online/offline selection.
+- Network-state checks.
+- Offline queue using AsyncStorage.
+- Automatic sync when connectivity returns.
+- Local disease metadata for offline result display.
+
+## Export Progress
+
+The export utility converts image-only PyTorch checkpoints to ONNX.
+
+Current exported files:
+
+```text
+mobile-app/assets/mobile_models/offline_model.onnx
+mobile-app/assets/mobile_models/offline_model_manifest.json
+```
+
+The manifest records:
+
+- Model name.
+- Class mapping.
+- Image size.
+- Input and output names.
+- Normalization values.
+- Runtime notes.
+
+Multimodal checkpoints are intentionally blocked from offline export because
+they require metadata features and backend-only preprocessing.
+
+## Documentation Progress
+
+The MkDocs documentation has been cleaned and organized for Appendix C.
+
+The documentation now covers:
+
+- Project overview.
+- Dataset and preprocessing background.
+- Architecture and API design.
+- Code-level module responsibilities.
+- Training, inference, export, and experiment tracking.
+- Project plan and final progress summary.

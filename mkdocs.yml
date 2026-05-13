@@ -1,0 +1,24 @@
+site_name: Plant Disease Detection System
+site_description: Code documentation for the Plant Disease Detection System university project
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+nav:
+  - Overview: index.md
+  - Background: background.md
+  - Design: design.md
+  - Code Documentation: code-documentation.md
+  - Plan: plan.md
+  - Progress: progress.md
+
+markdown_extensions:
+  - tables
+  - fenced_code
+  - toc:
+      permalink: true

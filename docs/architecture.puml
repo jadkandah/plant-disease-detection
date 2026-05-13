@@ -33,7 +33,7 @@ package "Training & Model Preparation" as TrainPkg {
 
   rectangle "Training Environment\n(Preprocessing, Training, Evaluation)" as TrainEnv
 
-  rectangle "Exported Mobile-Ready Model\n(TFLite / ONNX / TorchScript)" as ModelFile
+  rectangle "Exported Offline Model\n(ONNX + manifest)" as ModelFile
 }
 
 Datasets --> TrainEnv
@@ -49,7 +49,7 @@ package "Operational Environment (Deployment & Usage)" as DeployPkg {
 
   rectangle "On-Device Inference\n(Offline Prediction)" as OnDevice
 
-  rectangle "Backend Services\n• User Management & Auth\n• Usage History\n• Translation / Explanation\n• Optional Online Inference" as Backend
+  rectangle "Backend Services\n• User Management & Auth\n• Prediction API\n• Disease Metadata\n• Usage History\n• Admin APIs" as Backend
 }
 
 Farmer --> MobileApp
