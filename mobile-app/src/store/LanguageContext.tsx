@@ -41,7 +41,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
         I18nManager.forceRTL(saved === 'ar');
       }
     } catch {
-      // Default to English
+
     }
   };
 
@@ -51,9 +51,9 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     I18nManager.forceRTL(lang === 'ar');
   };
 
-  /**
-   * Translation function. Supports nested keys like "auth.login".
-   */
+
+
+
   const t = (key: string): string => {
     const keys = key.split('.');
     let result: any = translations[language];
@@ -74,7 +74,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-/**
- * Convenience hook for accessing translations.
- */
+
+
+
 export const useTranslation = () => useContext(LanguageContext);

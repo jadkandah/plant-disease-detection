@@ -26,7 +26,7 @@ skinparam arrow {
   Thickness 1.5
 }
 
-' ======================= TRAINING SIDE =======================
+
 package "Training & Model Preparation" as TrainPkg {
 
   rectangle "Raw Image Datasets" as Datasets
@@ -40,7 +40,7 @@ Datasets --> TrainEnv
 TrainEnv --> ModelFile
 
 
-' ======================= OPERATIONAL SIDE =======================
+
 package "Operational Environment (Deployment & Usage)" as DeployPkg {
 
   rectangle "Farmer (User)" as Farmer

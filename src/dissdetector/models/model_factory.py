@@ -11,7 +11,7 @@ MULTIMODAL_PIPELINE_MODELS = {
 
 
 class MultiModalResNet50(nn.Module):
-    # Current working model = EARLY FUSION
+
     def __init__(self, num_classes: int, num_features: int = 5):
         super().__init__()
 
@@ -103,10 +103,10 @@ class MetadataOnlyMLP(nn.Module):
 
 
 class LateFusionMultiModalResNet50(nn.Module):
-    # True late fusion:
-    # image branch -> image logits
-    # metadata branch -> metadata logits
-    # concatenate both logits -> final fusion head
+
+
+
+
     def __init__(self, num_classes: int, num_features: int = 5):
         super().__init__()
 
@@ -170,7 +170,7 @@ class LateFusionMultiModalResNet50(nn.Module):
 
 
 def is_multimodal_model(model_name: str) -> bool:
-    # "multimodal" here really means: uses the metadata-aware online pipeline
+
     return model_name in MULTIMODAL_PIPELINE_MODELS
 
 

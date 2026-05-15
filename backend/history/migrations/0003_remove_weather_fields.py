@@ -1,4 +1,4 @@
-# Generated manually after removing weather features from prediction history.
+
 
 from django.db import migrations
 

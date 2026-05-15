@@ -19,17 +19,17 @@ from tqdm import tqdm
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-# =========================
-# Configuration
-# =========================
+
+
+
 ROOT = Path("/home/jad/plant-disease-detection/plant-disease-detection")
 DATASET_PATH = ROOT / "jordan_dataset" / "images"
 
-# Safer defaults for laptop GPUs; you can raise later
-BATCH_SIZE = 4           # try 4 if VRAM is tight
+
+BATCH_SIZE = 4
 NUM_EPOCHS = 30
 LEARNING_RATE = 1e-3
-IMAGE_SIZE = 384         # try 256 for even lower memory
+IMAGE_SIZE = 384
 
 MODEL_OUTPUT_PATH = ROOT / "src" / "dissdetector" / "resnet_50_plant_disease.pth"
 
@@ -40,15 +40,15 @@ DEVICE = torch.device(
 )
 print(f"Using device: {DEVICE}")
 
-torch.backends.cudnn.benchmark = True  # ok for fixed image size
+torch.backends.cudnn.benchmark = True
 
-# =========================
-# Transforms (Albumentations v2)
-# =========================
+
+
+
 NORM_MEAN = [0.485, 0.456, 0.406]
 NORM_STD = [0.229, 0.224, 0.225]
 
-# IMPORTANT: p=1.0 to guarantee fixed size every time
+
 train_transforms = A.Compose([
     A.RandomResizedCrop(size=(IMAGE_SIZE, IMAGE_SIZE), scale=(0.8, 1.0), ratio=(0.9, 1.1), p=1.0),
     A.HorizontalFlip(p=0.5),
@@ -65,13 +65,13 @@ val_test_transforms = A.Compose([
     ToTensorV2(),
 ])
 
-# =========================
-# Dataset (leaf classes) with shared mapping
-# =========================
+
+
+
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
 def list_leaf_classes(split_dir: Path):
-    """Return sorted set of 'Parent___Leaf' class names present under split_dir."""
+
     classes = set()
     for parent in sorted(os.listdir(split_dir)):
         parent_path = split_dir / parent
@@ -84,7 +84,7 @@ def list_leaf_classes(split_dir: Path):
     return classes
 
 def build_shared_mapping(base_dir: Path):
-    """Union classes across train/val/test and build a single shared mapping."""
+
     all_classes = set()
     split_dirs = {}
     for split in ["train", "val", "test"]:
@@ -104,7 +104,7 @@ class LeafClassAlbumentationsDataset(Dataset):
         self.transform = transform
         self.image_size = image_size
         self.split_name = split_name
-        self.class_to_idx = class_to_idx  # SHARED mapping across splits
+        self.class_to_idx = class_to_idx
 
         self._bad_logged = set()
         self._bad_count = 0
@@ -123,7 +123,7 @@ class LeafClassAlbumentationsDataset(Dataset):
 
                 cls = f"{parent_name}___{leaf_name}"
                 if cls not in self.class_to_idx:
-                    # Shouldn't happen, but keep safe
+
                     continue
                 cls_idx = self.class_to_idx[cls]
 
@@ -136,7 +136,7 @@ class LeafClassAlbumentationsDataset(Dataset):
             raise RuntimeError(f"No images found under: {self.root_dir}")
 
         self.samples = samples
-        self.classes = sorted(self.class_to_idx.keys())  # same across splits
+        self.classes = sorted(self.class_to_idx.keys())
 
     def __len__(self):
         return len(self.samples)
@@ -183,9 +183,9 @@ class LeafClassAlbumentationsDataset(Dataset):
 
         return img_tensor, target
 
-# =========================
-# Safe collate
-# =========================
+
+
+
 from torch.utils.data._utils.collate import default_collate
 
 def safe_collate(batch):
@@ -194,9 +194,9 @@ def safe_collate(batch):
         return torch.empty(0, 3, IMAGE_SIZE, IMAGE_SIZE), torch.empty(0, dtype=torch.long)
     return default_collate(batch)
 
-# =========================
-# Data loading
-# =========================
+
+
+
 def load_data(base_dir: Path):
     split_dirs, classes, class_to_idx = build_shared_mapping(base_dir)
 
@@ -211,7 +211,7 @@ def load_data(base_dir: Path):
         ) for split in ["train", "val", "test"]
     }
 
-    # Report shared mapping from TRAIN viewpoint for convenience
+
     print("\n--- Shared Model Label Mapping (Text to Integer) ---")
     print({c: class_to_idx[c] for c in sorted(class_to_idx)})
     print("----------------------------------------------------")
@@ -238,9 +238,9 @@ def load_data(base_dir: Path):
 
     return dataloaders, dataset_sizes, class_to_idx
 
-# =========================
-# Model
-# =========================
+
+
+
 def load_model(num_classes: int) -> torch.nn.Module:
     model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
     for p in model.parameters():
@@ -251,9 +251,9 @@ def load_model(num_classes: int) -> torch.nn.Module:
     print(f"\nLoaded ResNet-50 model with final layer adapted for {num_classes} classes.")
     return model
 
-# =========================
-# Train (with AMP)
-# =========================
+
+
+
 def train_model(model, dataloaders, dataset_sizes, criterion, optimizer, scheduler, num_epochs=1):
     since = time.time()
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -317,9 +317,9 @@ def train_model(model, dataloaders, dataset_sizes, criterion, optimizer, schedul
     model.load_state_dict(best_model_wts)
     return model
 
-# =========================
-# Main
-# =========================
+
+
+
 if __name__ == "__main__":
     if not DATASET_PATH.is_dir():
         print(f"ERROR: Data directory not found at {DATASET_PATH}. Check ROOT.")

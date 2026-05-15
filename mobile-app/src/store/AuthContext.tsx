@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
       if (token) {
-        // Optimistically try to fetch user profile
+
         const response = await apiClient.get('/auth/profile/');
         setUser(response.data);
       }

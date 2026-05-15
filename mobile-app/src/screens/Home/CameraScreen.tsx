@@ -60,7 +60,7 @@ export default function CameraScreen({ navigation }: any) {
           return;
         }
 
-        // ── Frontend preprocessing (quality checks + resize) ──
+
         setStatusMessage(t('gallery.preprocessingImage') || 'Checking image quality…');
         const preprocessed = await preprocessImage(photo.uri);
         if (!preprocessed.valid) {

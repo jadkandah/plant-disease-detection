@@ -1,11 +1,11 @@
-"""
-Dual-model AI inference for plant disease detection.
 
-- Offline model: MobileNetV3-Small (fast, lightweight, image-only)
-- Online model:  ResNet50 image-only 512px (higher mIoU/lower val loss choice)
 
-Both models are loaded once (singleton) and reused for all predictions.
-"""
+
+
+
+
+
+
 
 import os
 import cv2
@@ -16,17 +16,17 @@ import torchvision.models as models
 from torchvision import transforms
 from PIL import Image
 
-# ──────────────────────────────────────────────
-# Model configuration (must match training script exactly)
-# ──────────────────────────────────────────────
+
+
+
 IMAGE_SIZE = 512
 NORM_MEAN = [0.485, 0.456, 0.406]
 NORM_STD  = [0.229, 0.224, 0.225]
 
-# Project root
+
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Model weight paths
+
 OFFLINE_MODEL_PATH = os.path.join(
     _PROJECT_ROOT, "saved_models",
     "mobilenet_v3_small_512_background_removed_epochs25.pth"
@@ -36,11 +36,11 @@ ONLINE_MODEL_PATH = os.path.join(
     "image_only_resnet50_background_removed_512_epochs40.pth"
 )
 
-# ──────────────────────────────────────────────
-# 55 classes — sorted alphabetically, matching
-# build_shared_mapping() from the jordan_dataset.
-# Includes Eggplant + extended Orange classes.
-# ──────────────────────────────────────────────
+
+
+
+
+
 CLASS_NAMES = [
     "Apple___Apple_scab",
     "Apple___Black_rot",
@@ -99,11 +99,11 @@ CLASS_NAMES = [
     "Wheat___healthy",
 ]
 
-NUM_CLASSES = len(CLASS_NAMES)  # 55
+NUM_CLASSES = len(CLASS_NAMES)
 
-# ──────────────────────────────────────────────
-# Inference transform (matches val_test_transforms from training)
-# ──────────────────────────────────────────────
+
+
+
 inference_transform = transforms.Compose([
     transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
     transforms.CenterCrop(IMAGE_SIZE),
@@ -112,9 +112,9 @@ inference_transform = transforms.Compose([
 ])
 
 
-# ──────────────────────────────────────────────
-# Singleton model loaders
-# ──────────────────────────────────────────────
+
+
+
 _offline_model = None
 _online_model = None
 
@@ -128,7 +128,7 @@ def _get_device():
 
 
 def _load_offline_model():
-    """Load MobileNetV3-Small model (offline mode — fast, lightweight)."""
+
     global _offline_model
     if _offline_model is not None:
         return _offline_model
@@ -154,7 +154,7 @@ def _load_offline_model():
 
 
 def _load_online_model():
-    """Load ResNet50 image-only model (online mode — 512px background-removed model)."""
+
     global _online_model
     if _online_model is not None:
         return _online_model
@@ -179,25 +179,25 @@ def _load_online_model():
 
 
 def predict_from_array(image_array: np.ndarray, mode: str = "offline") -> tuple[str, float]:
-    """
-    Run inference on a preprocessed numpy array (BGR format from cv2).
 
-    Args:
-        image_array: BGR numpy array from cv2/preprocessing pipeline
-        mode: "online" (ResNet50 image-only 512) or "offline" (MobileNetV3-Small)
 
-    Returns:
-        (class_key, confidence)
-    """
+
+
+
+
+
+
+
+
     device = _get_device()
 
-    # Convert BGR → RGB → PIL
+
     image_rgb = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
     pil_image = Image.fromarray(image_rgb)
     input_tensor = inference_transform(pil_image).unsqueeze(0).to(device)
 
     if mode == "online":
-        # ── Online: image-only ResNet50 ──
+
         print("[inference] Using ResNet50 image-only 512")
         model = _load_online_model()
 
@@ -208,7 +208,7 @@ def predict_from_array(image_array: np.ndarray, mode: str = "offline") -> tuple[
 
         model_name = "ResNet50-ImageOnly-512"
     else:
-        # ── Offline: image only ──
+
         print("[inference] Using MobileNetV3 Small")
         model = _load_offline_model()
 
@@ -227,10 +227,10 @@ def predict_from_array(image_array: np.ndarray, mode: str = "offline") -> tuple[
 
 
 def predict_image(image_file, mode: str = "offline") -> tuple[str, float]:
-    """
-    Run inference on a Django UploadedFile or file-like object.
-    Backward-compatible wrapper around predict_from_array.
-    """
+
+
+
+
     image_bytes = image_file.read()
     np_arr = np.frombuffer(image_bytes, np.uint8)
     image_array = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)

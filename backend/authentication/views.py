@@ -13,8 +13,8 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        
-        # Generate JWT token
+
+
         refresh = RefreshToken.for_user(user)
 
         return Response({
@@ -34,7 +34,7 @@ class LoginView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
-        
+
         refresh = RefreshToken.for_user(user)
 
         return Response({
@@ -64,14 +64,14 @@ class ChangePasswordView(generics.UpdateAPIView):
     def update(self, request, *args, **kwargs):
         self.object = self.get_object()
         serializer = self.get_serializer(data=request.data)
-        
+
         if serializer.is_valid():
-            # set_password also hashes the password that the user will get
+
             self.object.set_password(serializer.validated_data["new_password"])
             self.object.save()
-            
-            # Since the password changed, we might optionally want to return new tokens here.
-            # But standard is just 200 OK.
+
+
+
             return Response({"detail": "Password updated successfully"}, status=status.HTTP_200_OK)
-            
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

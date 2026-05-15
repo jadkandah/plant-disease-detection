@@ -110,7 +110,7 @@ def list_leaf_classes(split_dir: Path):
 def build_shared_mapping(base_dir: Path, dataset_variant: str | None = None):
     split_dirs = resolve_split_dirs(base_dir, dataset_variant=dataset_variant)
 
-    all_classes = set() 
+    all_classes = set()
     for split, sd in split_dirs.items():
         if not sd.is_dir():
             raise RuntimeError(f"Missing split directory for {split}: {sd}")
@@ -467,14 +467,14 @@ def _append_param_group(param_groups, module, lr: float):
 
 
 def build_optimizer_phase1(model, model_name: str, learning_rate: float):
-    # metadata-only model does not have an image backbone
+
     if model_name == "metadata_only_mlp":
         return optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
 
     param_groups = []
 
-    # Keep the same rough ratio your current early-fusion model was using:
-    # backbone layer4 lower LR, new heads higher LR
+
+
     _append_param_group(param_groups, getattr(model.image_backbone, "layer4", None), learning_rate * 0.1)
     _append_param_group(param_groups, getattr(model, "image_proj", None), learning_rate * 0.5)
     _append_param_group(param_groups, getattr(model, "image_classifier", None), learning_rate * 0.5)
@@ -529,7 +529,7 @@ def run_multimodal_epoch(model, model_name: str, dataloader, criterion, optimize
         if labels.numel() == 0:
             continue
 
-        # BatchNorm safety
+
         if is_train and labels.size(0) < 2:
             continue
 

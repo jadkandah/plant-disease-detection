@@ -128,7 +128,7 @@ def build_transforms(image_size: int):
             border_mode=cv2.BORDER_CONSTANT
         ),
         A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=0.5),
-        # A.CoarseDropout(max_holes=8, max_height=64, max_width=64, min_holes=1, fill_value=0, p=0.5), # it gave some issues with some images and they were skipped in training
+
         A.Normalize(mean=NORM_MEAN, std=NORM_STD),
         A.RandomShadow(p=0.3),
         A.GaussianBlur(p=0.2),

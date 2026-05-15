@@ -1,13 +1,13 @@
-############################################
-# PYTHON ENVIRONMENTS & CACHE
-############################################
 
-# Virtual environments
+
+
+
+
 .venv/
 venv/
 env/
 
-# Python cache / compiled files
+
 __pycache__/
 *.py[cod]
 *.pyo
@@ -17,37 +17,37 @@ __pycache__/
 data_raw/
 jordan_dataset2/
 
-############################################
-# JUPYTER NOTEBOOKS
-############################################
 
-# Notebook checkpoints
+
+
+
+
 .ipynb_checkpoints/
 
-# Uncomment if you want to ignore all notebooks
-# *.ipynb
 
-############################################
-# MACHINE LEARNING / DEEP LEARNING FILES
-############################################
 
-# Model weights & checkpoints
+
+
+
+
+
+
 *.pth
 *.pt
 *.ckpt
 *.onnx
 
-# Saved experiment outputs
+
 saved_models/
 mlruns/
 
-# Training / runtime logs
+
 logs/
 *.log
 
-############################################
-# MLFLOW
-############################################
+
+
+
 
 mlflow.db
 
@@ -55,9 +55,9 @@ mlflow.db
 backend/db.sqlite3
 *.sqlite3
 
-############################################
-# DATA DIRECTORIES (LARGE FILES)
-############################################
+
+
+
 
 CSV_files/
 resources/
@@ -68,32 +68,32 @@ datasets/
 data_raw/
 src/dissdetector/project_model_resnet_iou.py
 
-############################################
-# DOCUMENTATION BUILD OUTPUT
-############################################
+
+
+
 GRAD_CAM_Output/
 site/
 
-############################################
-# EDITOR / OS JUNK
-############################################
 
-# VS Code
+
+
+
+
 .vscode/
 *.code-workspace
 
-# OS files
+
 .DS_Store
 Thumbs.db
 
-############################################
-# TEMP / SCRATCH
-############################################
+
+
+
 
 tempCodeRunnerFile.*
 *.tmp
 *.bak
 *.swp
 
-# Runtime media uploads
+
 backend/media/

@@ -13,13 +13,13 @@ import { ModelModeProvider } from './src/store/ModelModeContext';
 import { LoginScreen } from './src/screens/Auth/LoginScreen';
 import { SignUpScreen } from './src/screens/Auth/SignUpScreen';
 
-// Tab screens
+
 import HomeScreen from './src/screens/Home/HomeScreen';
 import HistoryScreen from './src/screens/History/HistoryScreen';
 import ProfileScreen from './src/screens/Profile/ProfileScreen';
 import SettingsScreen from './src/screens/Settings/SettingsScreen';
 
-// Stack screens
+
 import CameraScreen from './src/screens/Home/CameraScreen';
 import GalleryScreen from './src/screens/Home/GalleryScreen';
 import ResultScreen from './src/screens/Home/ResultScreen';

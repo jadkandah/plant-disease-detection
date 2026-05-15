@@ -12,9 +12,9 @@ from torchvision import transforms, models
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
-# =========================
-# CONFIG
-# =========================
+
+
+
 MODEL_PATH = "saved_models/mobilenet_v3_small_512_epochs25_full_data_set.pth"
 TRAIN_DIR = "jordan_dataset/train"
 TEST_DIR = "jordan_dataset/test"
@@ -28,9 +28,9 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 VALID_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
-# =========================
-# FIND CLASS NAMES
-# =========================
+
+
+
 def find_leaf_class_dirs(root_dir):
     root = Path(root_dir)
     class_dirs = []
@@ -43,9 +43,9 @@ def find_leaf_class_dirs(root_dir):
 
 CLASS_NAMES = find_leaf_class_dirs(TRAIN_DIR)
 
-# =========================
-# BUILD MODEL
-# =========================
+
+
+
 model = models.mobilenet_v3_small(weights=None)
 in_features = model.classifier[-1].in_features
 model.classifier[-1] = nn.Linear(in_features, len(CLASS_NAMES))
@@ -65,9 +65,9 @@ except Exception:
 model.to(DEVICE)
 model.eval()
 
-# =========================
-# TRANSFORMS
-# =========================
+
+
+
 transform = transforms.Compose([
     transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
     transforms.ToTensor(),
@@ -77,9 +77,9 @@ transform = transforms.Compose([
     )
 ])
 
-# =========================
-# GET IMAGE PATHS PER CLASS
-# =========================
+
+
+
 def get_images_by_class(root_dir):
     root = Path(root_dir)
     class_to_images = {}
@@ -98,19 +98,19 @@ def get_images_by_class(root_dir):
 
 class_images = get_images_by_class(TEST_DIR)
 
-# =========================
-# GRAD-CAM SETUP
-# =========================
+
+
+
 target_layers = [model.features[-1]]
 cam = GradCAM(model=model, target_layers=target_layers)
 
-# =========================
-# PROCESS IMAGES
-# =========================
+
+
+
 for cls, images in class_images.items():
     print(f"\nProcessing class: {cls}")
 
-    # random sample (max 10 or less if not enough images)
+
     sample_images = random.sample(images, min(IMAGES_PER_CLASS, len(images)))
 
     for img_path in sample_images:
@@ -120,7 +120,7 @@ for cls, images in class_images.items():
         input_tensor = transform(pil_img).unsqueeze(0).to(DEVICE)
         rgb_img = np.array(pil_img).astype(np.float32) / 255.0
 
-        # prediction
+
         with torch.no_grad():
             output = model(input_tensor)
             probs = torch.softmax(output, dim=1)
@@ -128,11 +128,11 @@ for cls, images in class_images.items():
             pred_label = CLASS_NAMES[pred_idx]
             pred_conf = probs[0, pred_idx].item()
 
-        # Grad-CAM
+
         grayscale_cam = cam(input_tensor=input_tensor)[0]
         visualization = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=True)
 
-        # safe filename
+
         safe_cls = cls.replace("/", "_")
         save_name = f"{safe_cls}__{img_path.stem}__pred_{pred_label.replace('/', '_')}.jpg"
         save_path = OUTPUT_DIR / save_name

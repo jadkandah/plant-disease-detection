@@ -10,8 +10,8 @@ class PredictionRecord(models.Model):
     confidence = models.FloatField()
     is_healthy = models.BooleanField(default=False)
     predicted_at = models.DateTimeField(auto_now_add=True)
-    
-    # Offline sync info
+
+
     sync_status = models.CharField(
         max_length=20,
         choices=[('synced', 'Synced'), ('pending', 'Pending')],
@@ -27,6 +27,6 @@ class PredictionRecord(models.Model):
         choices=[('online', 'Online'), ('offline', 'Offline')],
         default='online'
     )
-    
+
     def __str__(self):
         return f"{self.user.email} - {self.crop_name} - {self.disease_name_en}"

@@ -16,7 +16,7 @@ class PredictView(generics.CreateAPIView):
     serializer_class = PredictionRequestSerializer
 
     def post(self, request, *args, **kwargs):
-        # 1. Validate the incoming request (needs an image)
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -24,15 +24,7 @@ class PredictView(generics.CreateAPIView):
         source_type = serializer.validated_data.get('source_type', 'camera')
         mode = serializer.validated_data.get('mode', 'offline')
 
-        # ──────────────────────────────────────────
-        # 2. Backend preprocessing (SAM + backend-only transforms)
-        #
-        #   Common quality checks (blur, brightness, contrast) are
-        #   performed on the FRONTEND before upload.
-        #
-        #   🟢 Offline: preprocessed image → MobileNetV3-Small
-        #   🔵 Online:  preprocessed image → SAM → ResNet50 image-only 512
-        # ──────────────────────────────────────────
+
         print(f"[predict] Mode: {mode}")
         preprocessed_image, preprocess_status = preprocess_image(image_file, mode=mode)
 
@@ -42,7 +34,7 @@ class PredictView(generics.CreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 3. Run AI inference on the preprocessed image.
+
         try:
             predicted_class_key, confidence = predict_from_array(
                 preprocessed_image,
@@ -56,11 +48,11 @@ class PredictView(generics.CreateAPIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        # 4. Look up the disease info from the database
+
         try:
             predicted_disease = DiseaseInfo.objects.get(class_key=predicted_class_key)
         except DiseaseInfo.DoesNotExist:
-            # If the class isn't in the DB yet, return a basic response
+
             print(f"[predict] WARNING: No DiseaseInfo for class '{predicted_class_key}' — returning raw result")
             return Response({
                 "success": True,
@@ -71,7 +63,7 @@ class PredictView(generics.CreateAPIView):
                 "disease_info": None,
             }, status=status.HTTP_200_OK)
 
-        # 5. Save to prediction history
+
         image_file.seek(0)
         PredictionRecord.objects.create(
             user=request.user,
@@ -86,7 +78,7 @@ class PredictView(generics.CreateAPIView):
             model_mode=mode,
         )
 
-        # 6. Return the result
+
         return Response({
             "success": True,
             "mode": mode,

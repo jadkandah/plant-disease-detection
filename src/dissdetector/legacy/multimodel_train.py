@@ -1,8 +1,3 @@
-# =========================================================
-# Improved Multimodal ResNet50 for Plant Disease Detection
-# Image + Weather/Soil CSV Features
-# =========================================================
-
 import os
 import sys
 import time
@@ -26,11 +21,6 @@ from tqdm import tqdm
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-
-# =========================
-# Configuration
-# =========================
-# ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
 ROOT = Path("/home/jad/plant-disease-detection")
 DATASET_PATH = ROOT / "jordan_dataset"
 METADATA_CSV = DATASET_PATH / "metadata_weather.csv"
@@ -41,7 +31,6 @@ IMAGE_SIZE = 512
 PATIENCE = 6
 SEED = 42
 
-# phase switch: after this epoch, unfreeze layer3 too
 UNFREEZE_EPOCH = 4
 
 MODEL_OUTPUT_PATH = ROOT / "src" / "dissdetector" / "resnet50_multimodal_freeze_unfreeze.pth"
@@ -56,10 +45,6 @@ print(f"Using device: {DEVICE}")
 if DEVICE.type == "cuda":
     torch.backends.cudnn.benchmark = True
 
-
-# =========================
-# Seed
-# =========================
 def seed_everything(seed=42):
     random.seed(seed)
     np.random.seed(seed)
@@ -69,10 +54,6 @@ def seed_everything(seed=42):
 
 seed_everything(SEED)
 
-
-# =========================
-# Weather / soil feature columns
-# =========================
 FEATURE_COLS = [
     "temp_c",
     "humidity_pct",
@@ -81,10 +62,6 @@ FEATURE_COLS = [
     "soil_moisture_pct",
 ]
 
-
-# =========================
-# Transforms
-# =========================
 NORM_MEAN = [0.485, 0.456, 0.406]
 NORM_STD = [0.229, 0.224, 0.225]
 
@@ -117,10 +94,6 @@ val_test_transforms = A.Compose([
 
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
-
-# =========================
-# Helpers
-# =========================
 def list_leaf_classes(split_dir):
     classes = set()
     for parent in sorted(os.listdir(split_dir)):
@@ -182,7 +155,7 @@ def compute_class_weights_from_samples(samples, num_classes):
     counts[counts == 0] = 1.0
     weights = counts.sum() / (num_classes * counts)
 
-    # Clamp a bit to avoid extreme weights
+
     weights = np.clip(weights, 0.3, 5.0)
 
     return torch.tensor(weights, dtype=torch.float32)
@@ -224,10 +197,6 @@ def compute_metrics_from_confusion(conf_mat):
 
     return acc, miou, macro_f1
 
-
-# =========================
-# Dataset
-# =========================
 class MultiModalPlantDataset(Dataset):
     def __init__(
         self,
@@ -355,9 +324,6 @@ class MultiModalPlantDataset(Dataset):
         return img_tensor, feat_tensor, target
 
 
-# =========================
-# Safe collate
-# =========================
 def safe_collate(batch):
     batch = [b for b in batch if b is not None]
     if len(batch) == 0:
@@ -369,9 +335,6 @@ def safe_collate(batch):
     return default_collate(batch)
 
 
-# =========================
-# Data loading
-# =========================
 def load_data(base_dir, metadata_csv):
     split_dirs, classes, class_to_idx = build_shared_mapping(base_dir)
 
@@ -410,7 +373,7 @@ def load_data(base_dir, metadata_csv):
             pin_memory=(DEVICE.type == "cuda"),
             persistent_workers=False,
             collate_fn=safe_collate,
-            drop_last=(split == "train"),   # FIX: avoid last batch of size 1 during training
+            drop_last=(split == "train"),
         )
 
     dataset_sizes = {split: len(datasets[split]) for split in datasets}
@@ -425,20 +388,17 @@ def load_data(base_dir, metadata_csv):
     return dataloaders, datasets, dataset_sizes, class_to_idx
 
 
-# =========================
-# Model
-# =========================
 class MultiModalResNet50(nn.Module):
     def __init__(self, num_classes, num_features):
         super().__init__()
 
         backbone = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
 
-        # Freeze everything first
+
         for p in backbone.parameters():
             p.requires_grad = False
 
-        # Start with layer4 unfrozen
+
         for p in backbone.layer4.parameters():
             p.requires_grad = True
 
@@ -446,7 +406,7 @@ class MultiModalResNet50(nn.Module):
         backbone.fc = nn.Identity()
         self.image_backbone = backbone
 
-        # Project image branch down so it doesn't overpower tabular branch
+
         self.image_proj = nn.Sequential(
             nn.Linear(in_features, 512),
             nn.BatchNorm1d(512),
@@ -459,7 +419,7 @@ class MultiModalResNet50(nn.Module):
             nn.Dropout(0.20),
         )
 
-        # Tabular branch
+
         self.feature_mlp = nn.Sequential(
             nn.Linear(num_features, 64),
             nn.BatchNorm1d(64),
@@ -472,7 +432,7 @@ class MultiModalResNet50(nn.Module):
             nn.Dropout(0.20),
         )
 
-        # Fusion head
+
         self.fusion = nn.Sequential(
             nn.Linear(256 + 128, 256),
             nn.BatchNorm1d(256),
@@ -506,9 +466,6 @@ def load_model(num_classes):
     return model
 
 
-# =========================
-# Optimizer builder
-# =========================
 def build_optimizer_phase1(model):
     return optim.AdamW(
         [
@@ -534,9 +491,6 @@ def build_optimizer_phase2(model):
     )
 
 
-# =========================
-# Train / Eval
-# =========================
 def run_epoch(model, dataloader, criterion, optimizer=None, num_classes=1):
     is_train = optimizer is not None
     model.train() if is_train else model.eval()
@@ -552,7 +506,7 @@ def run_epoch(model, dataloader, criterion, optimizer=None, num_classes=1):
         if images.numel() == 0:
             continue
 
-        # FIX: skip too-small training batches that would break BatchNorm
+
         if is_train and images.size(0) < 2:
             continue
 
@@ -618,7 +572,7 @@ def train_model(model, dataloaders, criterion, num_epochs, patience, num_classes
         print(f"\nEpoch {epoch + 1}/{num_epochs}")
         print("-" * 12)
 
-        # staged unfreezing
+
         if epoch == UNFREEZE_EPOCH:
             print("🔓 Unfreezing layer3 and lowering learning rates...")
             for p in model.image_backbone.layer3.parameters():
@@ -679,9 +633,6 @@ def train_model(model, dataloaders, criterion, num_epochs, patience, num_classes
     return model
 
 
-# =========================
-# Main
-# =========================
 if __name__ == "__main__":
     if not DATASET_PATH.is_dir():
         print(f"ERROR: Data directory not found at {DATASET_PATH}")

@@ -39,7 +39,7 @@ export const ModelModeProvider = ({ children }: { children: ReactNode }) => {
         setSelectedModelMode(saved);
       }
     } catch {
-      // Default to online
+
     }
   };
 
@@ -64,7 +64,7 @@ export const ModelModeProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-/**
- * Convenience hook for accessing model mode.
- */
+
+
+
 export const useModelMode = () => useContext(ModelModeContext);

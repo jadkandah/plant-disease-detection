@@ -12,18 +12,9 @@ class HistoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Only return predictions for the logged-in user
+
         queryset = PredictionRecord.objects.filter(user=self.request.user).order_by('-predicted_at')
-        
-        # Filtering
-        crop = self.request.query_params.get('crop', None)
-        if crop:
-            queryset = queryset.filter(crop_name__icontains=crop)
-            
-        date = self.request.query_params.get('date', None)
-        if date:
-            queryset = queryset.filter(predicted_at__date=date)
-            
+
         return queryset
 
     def perform_create(self, serializer):
@@ -31,10 +22,7 @@ class HistoryViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='sync')
     def sync_offline(self, request):
-        """
-        Receives an array of PredictionRecord payload dictionaries that 
-        were created offline and missed the initial server connection.
-        """
+
         records = request.data.get('records', [])
         if not isinstance(records, list):
             return Response({"detail": "Payload must be a list under the 'records' key."}, status=status.HTTP_400_BAD_REQUEST)
@@ -45,11 +33,10 @@ class HistoryViewSet(viewsets.ModelViewSet):
             record_data = record_data.copy()
             predicted_at = record_data.get('predicted_at')
 
-            # Offline/local predictions arrive after the fact; mark them as
-            # synced while preserving camera/gallery as source_type.
+
             record_data['sync_status'] = 'synced'
             record_data['model_mode'] = 'offline'
-            
+
             serializer = SyncPredictionSerializer(data=record_data)
             if serializer.is_valid():
                 record = serializer.save(user=request.user)
@@ -63,9 +50,9 @@ class HistoryViewSet(viewsets.ModelViewSet):
                 synced.append(PredictionRecordSerializer(record).data)
             else:
                 errors.append(serializer.errors)
-        
+
         return Response({
-            "detail": f"Successfully synced {len(synced)} records.", 
+            "detail": f"Successfully synced {len(synced)} records.",
             "synced_records": synced,
             "failed_records": errors,
         }, status=status.HTTP_201_CREATED if synced else status.HTTP_400_BAD_REQUEST)

@@ -1,4 +1,3 @@
-#resnet50 multimodal plant disease detection with weather/soil data
 import os
 import sys
 import time
@@ -22,12 +21,12 @@ from tqdm import tqdm
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-# =========================
-# Configuration
-# =========================
-#ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
+
+
+
+
 ROOT = Path("/home/jad/plant-disease-detection/")
-DATASET_PATH = ROOT / "jordan_dataset"  # Changed from jordan_dataset2
+DATASET_PATH = ROOT / "jordan_dataset"
 METADATA_CSV = DATASET_PATH / "metadata_weather.csv"
 
 BATCH_SIZE = 2
@@ -49,9 +48,9 @@ print(f"Using device: {DEVICE}")
 if DEVICE.type == "cuda":
     torch.backends.cudnn.benchmark = True
 
-# =========================
-# Seed
-# =========================
+
+
+
 def seed_everything(seed=42):
     random.seed(seed)
     np.random.seed(seed)
@@ -61,9 +60,9 @@ def seed_everything(seed=42):
 
 seed_everything(SEED)
 
-# =========================
-# Weather / soil feature columns
-# =========================
+
+
+
 FEATURE_COLS = [
     "temp_c",
     "humidity_pct",
@@ -72,9 +71,9 @@ FEATURE_COLS = [
     "soil_moisture_pct",
 ]
 
-# =========================
-# Transforms
-# =========================
+
+
+
 NORM_MEAN = [0.485, 0.456, 0.406]
 NORM_STD = [0.229, 0.224, 0.225]
 
@@ -102,9 +101,9 @@ val_test_transforms = A.Compose([
 
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
-# =========================
-# Helpers
-# =========================
+
+
+
 def list_leaf_classes(split_dir):
     classes = set()
     for parent in sorted(os.listdir(split_dir)):
@@ -195,9 +194,9 @@ def compute_metrics_from_confusion(conf_mat):
     return acc, miou
 
 
-# =========================
-# Dataset
-# =========================
+
+
+
 class MultiModalPlantDataset(Dataset):
     def __init__(
         self,
@@ -325,9 +324,9 @@ class MultiModalPlantDataset(Dataset):
         return img_tensor, feat_tensor, target
 
 
-# =========================
-# Safe collate
-# =========================
+
+
+
 def safe_collate(batch):
     batch = [b for b in batch if b is not None]
     if len(batch) == 0:
@@ -339,9 +338,9 @@ def safe_collate(batch):
     return default_collate(batch)
 
 
-# =========================
-# Data loading
-# =========================
+
+
+
 def load_data(base_dir, metadata_csv):
     split_dirs, classes, class_to_idx = build_shared_mapping(base_dir)
 
@@ -395,20 +394,20 @@ def load_data(base_dir, metadata_csv):
     return dataloaders, datasets, dataset_sizes, class_to_idx
 
 
-# =========================
-# Multimodal Model
-# =========================
+
+
+
 class MultiModalResNet50(nn.Module):
     def __init__(self, num_classes, num_features):
         super().__init__()
 
         backbone = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
 
-        # Freeze all first
+
         for p in backbone.parameters():
             p.requires_grad = False
 
-        # Unfreeze only layer4
+
         for p in backbone.layer4.parameters():
             p.requires_grad = True
 
@@ -449,9 +448,9 @@ def load_model(num_classes):
     return model
 
 
-# =========================
-# Train / Eval
-# =========================
+
+
+
 def run_epoch(model, dataloader, criterion, optimizer=None, num_classes=1):
     is_train = optimizer is not None
     model.train() if is_train else model.eval()
@@ -467,8 +466,8 @@ def run_epoch(model, dataloader, criterion, optimizer=None, num_classes=1):
         if images.numel() == 0:
             continue
 
-        # Skip undersized train batches that can happen after safe_collate removes bad samples.
-        # BatchNorm1d in feature_mlp requires more than 1 sample during training.
+
+
         if is_train and images.size(0) < 2:
             continue
 
@@ -555,9 +554,9 @@ def train_model(model, dataloaders, criterion, optimizer, scheduler, num_epochs,
     return model
 
 
-# =========================
-# Main
-# =========================
+
+
+
 if __name__ == "__main__":
     if not DATASET_PATH.is_dir():
         print(f"ERROR: Data directory not found at {DATASET_PATH}")

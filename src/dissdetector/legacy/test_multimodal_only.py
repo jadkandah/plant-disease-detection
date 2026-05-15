@@ -1,8 +1,3 @@
-'''
-MultiModalResNet50 not so efficent but were keeping it just incase
-the other file is overfitting
-working fine not the best model
-'''
 import os
 from pathlib import Path
 
@@ -21,9 +16,6 @@ from tqdm import tqdm
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-# =========================
-# Configuration
-# =========================
 ROOT = Path("/home/jad/plant-disease-detection/")
 DATASET_PATH = ROOT / "jordan_dataset"
 METADATA_CSV = DATASET_PATH / "metadata_weather.csv"

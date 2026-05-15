@@ -6,9 +6,6 @@ import torch
 
 from mobile_sam import sam_model_registry, SamPredictor
 
-# =========================
-# CONFIG
-# =========================
 ROOT = Path("/home/jad/plant-disease-detection")
 
 INPUT_DIR = ROOT / "jordan_dataset" / "train"
@@ -17,15 +14,13 @@ OUTPUT_DIR = ROOT / "jordan_dataset" / "train_images_background_removed"
 CHECKPOINT_PATH = ROOT / "mobile_sam.pt"
 MODEL_TYPE = "vit_t"
 
-# AUTO GPU DETECTION
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 VALID_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 CROP_PADDING = 15
 
-# =========================
-# UTILS
-# =========================
+
 def ensure_dir(path):
     os.makedirs(path, exist_ok=True)
 
@@ -112,15 +107,15 @@ def apply_mask_white_bg(image, mask):
     return np.where(mask_3ch == 255, image, background)
 
 
-# =========================
-# 🔥 FIXED PATH LOGIC
-# =========================
+
+
+
 def get_output_path(input_path: Path, input_root: Path, output_root: Path) -> Path:
     rel_path = input_path.relative_to(input_root)
     parts = rel_path.parts
 
-    # EXPECTED:
-    # train/Plant/Disease/image.jpg
+
+
     if len(parts) >= 3:
         plant = parts[0]
         disease = parts[1]
@@ -136,9 +131,9 @@ def get_output_path(input_path: Path, input_root: Path, output_root: Path) -> Pa
     return output_root / plant / disease / filename
 
 
-# =========================
-# PROCESS IMAGE
-# =========================
+
+
+
 def process_image(image_path, predictor):
     image_path = Path(image_path)
 
@@ -177,9 +172,6 @@ def process_image(image_path, predictor):
     return True
 
 
-# =========================
-# MAIN
-# =========================
 def main():
     ensure_dir(OUTPUT_DIR)
 

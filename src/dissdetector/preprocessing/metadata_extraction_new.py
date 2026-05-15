@@ -7,17 +7,27 @@ import requests
 import pandas as pd
 from tqdm import tqdm
 
-# =========================
-# Configuration
-# =========================
-
 ROOT = Path("/home/jad/plant-disease-detection")
 DATASET_PATH = ROOT / "jordan_dataset"
 OUTPUT_CSV = DATASET_PATH / "metadata_weather.csv"
 
-LATITUDE = 31.9539
-LONGITUDE = 35.9106
 TIMEZONE = "Asia/Amman"
+
+JORDAN_AREAS = [
+    {"name": "Amman", "lat": 31.9539, "lon": 35.9106},
+    {"name": "Irbid", "lat": 32.5556, "lon": 35.8500},
+    {"name": "Ajloun", "lat": 32.3326, "lon": 35.7517},
+    {"name": "Jerash", "lat": 32.2747, "lon": 35.8961},
+    {"name": "Mafraq", "lat": 32.3429, "lon": 36.2080},
+    {"name": "Zarqa", "lat": 32.0728, "lon": 36.0870},
+    {"name": "Balqa", "lat": 32.0392, "lon": 35.7272},
+    {"name": "Madaba", "lat": 31.7195, "lon": 35.7930},
+    {"name": "Karak", "lat": 31.1853, "lon": 35.7047},
+    {"name": "Tafilah", "lat": 30.8337, "lon": 35.6044},
+    {"name": "Ma'an", "lat": 30.1920, "lon": 35.7249},
+    {"name": "Aqaba", "lat": 29.5321, "lon": 35.0063},
+    {"name": "Jordan Valley", "lat": 32.0936, "lon": 35.6160},
+]
 
 YEAR_START = 2023
 YEAR_END = 2025
@@ -35,9 +45,6 @@ IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
 random.seed(RANDOM_SEED)
 
-# =========================
-# Map your raw class names
-# =========================
 CLASS_NAME_MAP = {
     "Healthy Wheat": ("Wheat", "healthy"),
     "Wheat aphid": ("Wheat", "Aphid"),
@@ -77,12 +84,12 @@ CLASS_NAME_MAP = {
     "Grape___Esca_(Black_Measles)": ("Grape", "Esca_Black_Measles"),
     "Grape___healthy": ("Grape", "healthy"),
     "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": ("Grape", "Leaf_blight_Isariopsis_Leaf_Spot"),
-    
+
     "Orange___healthy": ("Orange", "healthy"),
     "Orange___Haunglongbing_(Citrus_greening)": ("Orange", "Citrus_greening"),
     "Orange___Canker": ("Orange", "Canker"),
     "Orange___Black_spot": ("Orange", "Black_spot"),
-    
+
     "Peach___Bacterial_spot": ("Peach", "Bacterial_spot"),
     "Peach___healthy": ("Peach", "healthy"),
 
@@ -106,11 +113,6 @@ CLASS_NAME_MAP = {
     "olive_peacock_spot": ("Olive", "Peacock_spot"),
 }
 
-# =========================
-# Disease -> likely months
-# These only guide date choice.
-# Weather values still come from API.
-# =========================
 PROFILE_MONTHS = {
     "healthy": [3, 4, 5],
     "rust": [2, 3, 4, 11, 12],
@@ -128,9 +130,7 @@ PROFILE_MONTHS = {
     "default": [3, 4, 5, 10],
 }
 
-# =========================
-# Helpers
-# =========================
+
 def list_images(base_dir: Path):
     image_paths = []
 
@@ -150,41 +150,28 @@ def list_images(base_dir: Path):
 
 
 def normalize_label_from_rel_path(rel_path: str):
-    """
-    Expected structures:
-        split/crop/disease_class/image.jpg       (new: train_images_background_removed/Tomato/Early_blight/img.jpg)
-        split/ClassName/image.jpg                (old: train/Tomato___Early_blight/img.jpg)
-
-    If there are 4+ parts, the disease is in parts[2].
-    If there are 3 parts, the disease is encoded in parts[1] (using ___, or check CLASS_NAME_MAP).
-    """
     parts = rel_path.split("/")
 
     if len(parts) < 3:
         return None, None, None
 
     split_name = parts[0]
-    
-    # Handle 4+ part structure: split/crop/disease_class/filename
+
     if len(parts) >= 4:
         crop_name = parts[1]
         disease_class = parts[2]
-        
-        # Try direct lookup
+
         if disease_class in CLASS_NAME_MAP:
             crop, disease = CLASS_NAME_MAP[disease_class]
             return split_name, crop, disease
-        
-        # Try combined key: "crop___disease_class"
+
         combined_key = f"{crop_name}___{disease_class}"
         if combined_key in CLASS_NAME_MAP:
             crop, disease = CLASS_NAME_MAP[combined_key]
             return split_name, crop, disease
-        
-        # Fallback: use crop name from folder and disease class name
+
         return split_name, crop_name, disease_class
-    
-    # Handle 3-part structure: split/ClassName/filename
+
     class_name = parts[1]
 
     if class_name in CLASS_NAME_MAP:
@@ -195,7 +182,6 @@ def normalize_label_from_rel_path(rel_path: str):
         crop, disease = class_name.split("___", 1)
         return split_name, crop, disease
 
-    # Fallback: try simple normalization
     return split_name, class_name, class_name
 
 
@@ -240,8 +226,34 @@ def choose_realistic_datetime(disease_name: str):
     year = random.randint(YEAR_START, YEAR_END)
     month = random.choice(months)
     day = random.randint(1, 28)
-    hour = random.randint(6, 17)  # daytime hours
+    hour = random.randint(6, 17)
     return datetime(year, month, day, hour, 0, 0)
+
+
+def choose_jordan_area(crop_name: str):
+    crop = (crop_name or "").lower()
+
+    crop_area_preferences = {
+        "olive": ["Irbid", "Ajloun", "Jerash", "Balqa"],
+        "wheat": ["Irbid", "Mafraq", "Karak", "Madaba"],
+        "tomato": ["Jordan Valley", "Madaba", "Karak"],
+        "potato": ["Irbid", "Mafraq", "Karak"],
+        "grape": ["Mafraq", "Irbid", "Madaba"],
+        "apple": ["Ajloun", "Irbid", "Balqa"],
+        "peach": ["Ajloun", "Irbid", "Balqa"],
+        "orange": ["Jordan Valley", "Irbid", "Balqa"],
+        "cauliflower": ["Jordan Valley", "Madaba", "Irbid"],
+        "eggplant": ["Jordan Valley", "Madaba", "Karak"],
+        "maize": ["Irbid", "Mafraq", "Jordan Valley"],
+    }
+
+    preferred_names = crop_area_preferences.get(crop)
+
+    if preferred_names:
+        candidates = [area for area in JORDAN_AREAS if area["name"] in preferred_names]
+        return random.choice(candidates)
+
+    return random.choice(JORDAN_AREAS)
 
 
 def fetch_hourly_weather_for_day(lat, lon, day_str, timezone):
@@ -287,14 +299,14 @@ def build_hourly_lookup(api_json):
     return lookup
 
 
-def fallback_weather_from_month(month):
-    # only used if API fails for a row
-    failed_counter=0
-    
-    if month in [12, 1, 2]:
-        failed_counter += 1
-        print(failed_counter, "failed API calls so far")
+failed_counter = 0
 
+
+def fallback_weather_from_month(month):
+    global failed_counter
+    failed_counter += 1
+
+    if month in [12, 1, 2]:
         return {
             "temp_c": 12,
             "humidity_pct": 75,
@@ -304,9 +316,6 @@ def fallback_weather_from_month(month):
         }
 
     if month in [3, 4, 5]:
-        failed_counter += 1
-        print(failed_counter, "failed API calls so far")
-
         return {
             "temp_c": 21,
             "humidity_pct": 60,
@@ -316,8 +325,6 @@ def fallback_weather_from_month(month):
         }
 
     if month in [6, 7, 8]:
-        failed_counter += 1
-        print(failed_counter, "failed API calls so far")
         return {
             "temp_c": 31,
             "humidity_pct": 35,
@@ -325,9 +332,6 @@ def fallback_weather_from_month(month):
             "precip_mm": 0.0,
             "soil_moisture_pct": 14,
         }
-    
-    failed_counter += 1
-    print(failed_counter, "failed API calls so far")
 
     return {
         "temp_c": 24,
@@ -338,9 +342,6 @@ def fallback_weather_from_month(month):
     }
 
 
-# =========================
-# Main
-# =========================
 def generate_metadata():
     if not DATASET_PATH.is_dir():
         raise RuntimeError(f"Dataset path not found: {DATASET_PATH}")
@@ -351,13 +352,12 @@ def generate_metadata():
 
     print(f"Found {len(image_rel_paths)} images.")
 
-    # Quick sanity check
     print("\nSample path parsing:")
     for rel_path in image_rel_paths[:10]:
         print(f"{rel_path} -> {normalize_label_from_rel_path(rel_path)}")
 
-    image_datetimes = {}
-    unique_days = set()
+    image_infos = {}
+    unique_requests = set()
     parse_failures = 0
 
     for rel_path in image_rel_paths:
@@ -369,42 +369,49 @@ def generate_metadata():
             disease = "default"
 
         dt = choose_realistic_datetime(disease)
+        area = choose_jordan_area(crop)
 
-        image_datetimes[rel_path] = {
+        image_infos[rel_path] = {
             "split": split_name,
             "crop": crop,
             "disease": disease,
             "dt": dt,
+            "area": area,
         }
 
-        unique_days.add(dt.strftime("%Y-%m-%d"))
+        day_str = dt.strftime("%Y-%m-%d")
+        unique_requests.add((area["name"], area["lat"], area["lon"], day_str))
 
-    print(f"\nNeed API calls for {len(unique_days)} unique days.")
+    print(f"\nNeed API calls for {len(unique_requests)} unique area-day combinations.")
     print(f"Label parse failures: {parse_failures}")
 
-    daily_cache = {}
-    failed_days = 0
+    weather_cache = {}
+    failed_requests = 0
 
-    for day_str in tqdm(sorted(unique_days), desc="Fetching Open-Meteo weather"):
+    for area_name, lat, lon, day_str in tqdm(sorted(unique_requests), desc="Fetching Open-Meteo weather"):
+        cache_key = (area_name, day_str)
+
         try:
-            api_json = fetch_hourly_weather_for_day(LATITUDE, LONGITUDE, day_str, TIMEZONE)
-            daily_cache[day_str] = build_hourly_lookup(api_json)
+            api_json = fetch_hourly_weather_for_day(lat, lon, day_str, TIMEZONE)
+            weather_cache[cache_key] = build_hourly_lookup(api_json)
         except Exception as e:
-            print(f"Failed API fetch for {day_str}: {e}")
-            daily_cache[day_str] = {}
-            failed_days += 1
+            print(f"Failed API fetch for {area_name} on {day_str}: {e}")
+            weather_cache[cache_key] = {}
+            failed_requests += 1
 
     rows = []
     api_missing = 0
 
     for rel_path in tqdm(image_rel_paths, desc="Building CSV"):
-        info = image_datetimes[rel_path]
+        info = image_infos[rel_path]
         dt = info["dt"]
+        area = info["area"]
 
         day_str = dt.strftime("%Y-%m-%d")
         hour_key = dt.strftime("%Y-%m-%dT%H:00")
+        cache_key = (area["name"], day_str)
 
-        weather = daily_cache.get(day_str, {}).get(hour_key)
+        weather = weather_cache.get(cache_key, {}).get(hour_key)
 
         if weather is None:
             api_missing += 1
@@ -418,25 +425,35 @@ def generate_metadata():
             "precip_mm": weather["precip_mm"],
             "soil_moisture_pct": weather["soil_moisture_pct"],
             "random_datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
+            "area_name": area["name"],
+            "latitude": area["lat"],
+            "longitude": area["lon"],
             "crop_name": info["crop"],
             "disease_name": info["disease"],
         })
 
     df = pd.DataFrame(rows)
     df = df[
-        ["image_rel_path"] + FEATURE_COLS + ["random_datetime", "crop_name", "disease_name"]
+        ["image_rel_path"]
+        + FEATURE_COLS
+        + ["random_datetime", "area_name", "latitude", "longitude", "crop_name", "disease_name"]
     ]
 
     df.to_csv(OUTPUT_CSV, index=False)
 
     print(f"\nSaved CSV to: {OUTPUT_CSV}")
-    print(f"Failed API day fetches: {failed_days}")
+    print(f"Failed API area-day fetches: {failed_requests}")
     print(f"Rows where exact API hour was missing and fallback was used: {api_missing}")
+    print(f"Fallback weather rows generated: {failed_counter}")
     print("\nHead of CSV:")
     print(df.head())
 
+    print("\nArea distribution:")
+    print(df["area_name"].value_counts())
+
     print("\nClass distribution sample:")
     print(df[["crop_name", "disease_name"]].value_counts().head(20))
+
 
 if __name__ == "__main__":
     generate_metadata()

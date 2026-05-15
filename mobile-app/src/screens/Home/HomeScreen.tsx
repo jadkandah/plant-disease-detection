@@ -34,7 +34,7 @@ export default function HomeScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Connection Status Bar */}
+
         <View style={[styles.connectionBar, isConnected ? styles.connectedBar : styles.disconnectedBar, isRTL && styles.rtlRow]}>
           {isConnected ? <Wifi color="#2E7D32" size={16} /> : <WifiOff color="#C62828" size={16} />}
           <Text style={[styles.connectionText, { color: isConnected ? '#2E7D32' : '#C62828' }]}>
@@ -42,7 +42,7 @@ export default function HomeScreen({ navigation }: any) {
           </Text>
         </View>
 
-        {/* Model Mode Indicator */}
+
         <View style={[styles.connectionBar, isOnlineMode ? styles.onlineModeBar : styles.offlineModeBar, isRTL && styles.rtlRow]}>
           {isOnlineMode ? <Cloud color="#1565C0" size={16} /> : <CloudOff color="#E65100" size={16} />}
           <Text style={[styles.connectionText, { color: isOnlineMode ? '#1565C0' : '#E65100' }]}>
@@ -55,7 +55,7 @@ export default function HomeScreen({ navigation }: any) {
           <Text style={[styles.title, isRTL && styles.rtlText]}>{t('home.title')}</Text>
         </View>
 
-        {/* Action Cards */}
+
         <View style={[styles.actionContainer, isRTL && styles.rtlRow]}>
           <TouchableOpacity style={[styles.actionCard, { backgroundColor: '#E8F5E9' }]} onPress={() => navigation.navigate('Camera')}>
             <Camera color="#2E7D32" size={32} />
@@ -70,7 +70,7 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* Daily Tip */}
+
         <View style={[styles.tipContainer, isRTL && styles.rtlRow]}>
           <HeartPulse color="#E65100" size={24} style={isRTL ? { marginLeft: 16 } : { marginRight: 16 }} />
           <View style={styles.tipTextContainer}>

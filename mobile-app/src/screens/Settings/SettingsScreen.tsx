@@ -27,7 +27,7 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.container}>
       <Text style={[styles.title, isRTL && styles.rtlText]}>{t('settings.title')}</Text>
       <ScrollView>
-        {/* Model Mode Toggle — Online / Offline */}
+
         <View style={styles.modelModeCard}>
           <View style={[styles.modelModeHeader, isRTL && styles.rtlRow]}>
             {isOnlineMode ? <Cloud color="#2E7D32" size={22} /> : <CloudOff color="#C62828" size={22} />}
@@ -66,7 +66,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Language */}
+
         <View style={[styles.settingRow, isRTL && styles.rtlRow]}>
           <Text style={styles.settingLabel}>{t('settings.language')}</Text>
           <View style={[styles.languageToggle, isRTL && styles.rtlRow]}>
@@ -93,9 +93,9 @@ export default function SettingsScreen() {
             </View>
             <ChevronRight color="#ccc" size={20} style={isRTL && styles.rtlIcon} />
           </TouchableOpacity>
-          
+
           <View style={styles.divider} />
-          
+
           <TouchableOpacity style={[styles.actionRow, isRTL && styles.rtlRow]} onPress={handleAbout}>
             <View style={[styles.actionLeft, isRTL && styles.rtlRow]}>
               <Info color="#2E7D32" size={24} />

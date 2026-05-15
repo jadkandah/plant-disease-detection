@@ -22,10 +22,10 @@ const IDLE_SYNC_STATE: AutoSyncState = {
   visible: false,
 };
 
-/**
- * Hook that automatically syncs offline predictions when the device
- * comes back online or the app returns to foreground.
- */
+
+
+
+
 export function useAutoSync(enabled = true): AutoSyncState {
   const { canUseOnlineMode } = useModelMode();
   const prevCanSync = useRef<boolean>(canUseOnlineMode);
@@ -149,7 +149,7 @@ export function useAutoSync(enabled = true): AutoSyncState {
     });
   }, [attemptSync, canUseOnlineMode, clearHideTimer, enabled]);
 
-  // Sync when backend/internet becomes reachable again.
+
   useEffect(() => {
     if (enabled && canUseOnlineMode && !prevCanSync.current) {
       attemptSync();
@@ -157,15 +157,15 @@ export function useAutoSync(enabled = true): AutoSyncState {
     prevCanSync.current = canUseOnlineMode;
   }, [attemptSync, canUseOnlineMode, enabled]);
 
-  // Sync any queued offline predictions whenever the app can reach the backend,
-  // even if the user keeps the model selector on Offline.
+
+
   useEffect(() => {
     if (enabled && canUseOnlineMode) {
       attemptSync();
     }
   }, [attemptSync, canUseOnlineMode, enabled]);
 
-  // Sync when app comes to foreground.
+
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
       if (nextState === 'active' && enabled && canUseOnlineMode) {
@@ -177,7 +177,7 @@ export function useAutoSync(enabled = true): AutoSyncState {
     return () => sub.remove();
   }, [attemptSync, canUseOnlineMode, enabled]);
 
-  // Safety net: if reconnect events are missed, queued items still sync soon.
+
   useEffect(() => {
     if (!enabled || !canUseOnlineMode) return;
 

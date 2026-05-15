@@ -56,7 +56,7 @@ export default function GalleryScreen({ navigation }: any) {
     try {
       setIsProcessing(true);
 
-      // ── Frontend preprocessing (quality checks + orientation correction + resize) ──
+
       setStatusMessage(t('gallery.preprocessingImage') || 'Checking image quality…');
       const preprocessed = await preprocessImage(imageUri);
       if (!preprocessed.valid) {

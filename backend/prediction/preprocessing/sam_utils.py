@@ -1,9 +1,5 @@
 import os
 import numpy as np
-
-# ──────────────────────────────────────────────
-# Try to import MobileSAM — optional dependency
-# ──────────────────────────────────────────────
 _SAM_AVAILABLE = False
 _predictor = None
 
@@ -15,7 +11,7 @@ except ImportError:
     print("[sam_utils] MobileSAM not installed — leaf extraction disabled. "
           "Install with: pip install git+https://github.com/ChaoningZhang/MobileSAM.git")
 
-# Path to the MobileSAM checkpoint
+
 SAM_CHECKPOINT = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
     "mobile_sam.pt"
@@ -60,13 +56,13 @@ def extract_leaf(image: np.ndarray) -> np.ndarray:
         return image
 
     try:
-        # SAM expects RGB
+
         import cv2
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         predictor.set_image(image_rgb)
 
         h, w, _ = image.shape
-        # Use center point as the leaf prompt
+
         input_point = np.array([[w // 2, h // 2]])
         input_label = np.array([1])
 
@@ -78,7 +74,7 @@ def extract_leaf(image: np.ndarray) -> np.ndarray:
 
         mask = masks[0]
 
-        # Replace background with white
+
         white_bg = np.ones_like(image) * 255
         result = np.where(mask[:, :, None], image, white_bg).astype(np.uint8)
 

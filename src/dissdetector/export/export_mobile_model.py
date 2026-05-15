@@ -1,10 +1,3 @@
-"""Export an image-only PyTorch checkpoint to ONNX for offline mobile inference.
-
-This utility intentionally supports only image-only classifiers. The online
-multimodal model still belongs on the backend because it requires metadata
-features and backend-only SAM preprocessing.
-"""
-
 from __future__ import annotations
 
 import argparse

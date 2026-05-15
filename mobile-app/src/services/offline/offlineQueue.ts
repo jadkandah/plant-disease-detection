@@ -41,9 +41,9 @@ export function subscribeOfflineQueue(listener: OfflineQueueListener): () => voi
   };
 }
 
-/**
- * Add a locally inferred result to the offline queue.
- */
+
+
+
 export async function enqueueOfflineResult(prediction: OfflinePredictionResult): Promise<void> {
   const queue = await getOfflineQueue();
   queue.push(prediction);
@@ -51,9 +51,9 @@ export async function enqueueOfflineResult(prediction: OfflinePredictionResult):
   await notifyQueueListeners();
 }
 
-/**
- * Get all pending offline prediction results.
- */
+
+
+
 export async function getOfflineQueue(): Promise<OfflinePredictionResult[]> {
   try {
     const raw = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
@@ -63,17 +63,17 @@ export async function getOfflineQueue(): Promise<OfflinePredictionResult[]> {
   }
 }
 
-/**
- * Clear the entire offline queue (after successful sync).
- */
+
+
+
 export async function clearOfflineQueue(): Promise<void> {
   await AsyncStorage.removeItem(OFFLINE_QUEUE_KEY);
   await notifyQueueListeners();
 }
 
-/**
- * Remove a single item from the queue by its id.
- */
+
+
+
 export async function removeFromQueue(id: string): Promise<void> {
   const queue = await getOfflineQueue();
   const filtered = queue.filter((item) => item.id !== id);
@@ -81,10 +81,10 @@ export async function removeFromQueue(id: string): Promise<void> {
   await notifyQueueListeners();
 }
 
-/**
- * Attempt to sync all queued local results to the server.
- * Keeps any item in the queue unless the server accepts it.
- */
+
+
+
+
 export async function syncOfflineQueue(): Promise<OfflineSyncResult> {
   const queue = await getOfflineQueue();
   if (queue.length === 0) {

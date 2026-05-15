@@ -101,7 +101,7 @@ export default function HistoryScreen() {
     <SafeAreaView style={styles.container}>
       <Text style={[styles.title, isRTL && styles.rtlText]}>{t('history.title')}</Text>
 
-      {/* Mode indicator */}
+
       <View style={[styles.modeBar, isOnlineMode ? styles.modeOnline : styles.modeOffline]}>
         <Text style={[styles.modeText, { color: isOnlineMode ? '#1565C0' : '#E65100' }]}>
           {isOnlineMode ? t('home.modelOnline') : t('home.modelOffline')}

@@ -25,8 +25,8 @@ export default function ResultScreen({ route, navigation }: any) {
   const fallbackCropName = fallbackParts[0] || t('common.noData');
   const fallbackDiseaseName = (fallbackParts[1] || '').replace(/_/g, ' ') || t('common.noData');
 
-  // Use language-specific fields from the disease_info
-  // Default is Arabic; when English, show both English + Arabic
+
+
   const cropName = disease_info
     ? (language === 'ar'
         ? (disease_info.crop_name_ar || disease_info.crop_name_en)

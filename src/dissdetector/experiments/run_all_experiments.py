@@ -54,18 +54,7 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# To run all experiments and ranking:
-#python3 -m src.dissdetector.experiments.run_all_experiments --mode all
-
-# To run only offline experiments and ranking:
-#python3 -m src.dissdetector.experiments.run_all_experiments --mode offline
-
-# To run only online experiments and ranking:
-#python3 -m src.dissdetector.experiments.run_all_experiments --mode online
-
-# To run only ranking (no experiments):
-#python3 -m src.dissdetector.experiments.run_all_experiments --rank-only
-
-# To run experiments but skip ranking:
-#python3 -m src.dissdetector.experiments.run_all_experiments --mode offline --skip-ranking
+# how to run: python src/dissdetector/experiments/run_all_experiments.py --mode all
+# to run only offline experiments: python src/dissdetector/experiments/run_all_experiments.py --mode offline
+# to run only online experiments: python src/dissdetector/experiments/run_all_experiments.py --mode online
+# to run only ranking: python src/dissdetector/experiments/run_all_experiments.py --rank-only

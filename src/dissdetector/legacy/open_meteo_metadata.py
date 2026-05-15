@@ -2,22 +2,27 @@ import os
 import random
 from pathlib import Path
 from datetime import datetime
-
 import requests
 import pandas as pd
 from tqdm import tqdm
 
-# =========================
-# Configuration
-# =========================
-
-#ROOT = Path("/Users/sanadmadani/plant-disease-detection/plant-disease-detection")
 DATASET_PATH = Path("/home/jad/plant-disease-detection/jordan_dataset")
-#DATASET_PATH = ROOT / "jordan_dataset2"
 OUTPUT_CSV = DATASET_PATH / "metadata_weather.csv"
 
-LATITUDE = 31.9539
-LONGITUDE = 35.9106
+JORDAN_LOCATIONS = {
+    "Amman": (31.9539, 35.9106),
+    "Irbid": (32.5556, 35.8500),
+    "Mafraq": (32.3429, 36.2080),
+    "Zarqa": (32.0728, 36.0870),
+    "Balqa": (32.0367, 35.7284),
+    "Madaba": (31.7167, 35.8000),
+    "Karak": (31.1853, 35.7047),
+    "Tafilah": (30.8333, 35.6000),
+    "Ma'an": (30.1920, 35.7249),
+    "Aqaba": (29.5321, 35.0063),
+    "Jordan_Valley": (32.1056, 35.6200),
+}
+
 TIMEZONE = "Asia/Amman"
 
 YEAR_START = 2023
@@ -36,9 +41,8 @@ IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
 random.seed(RANDOM_SEED)
 
-# =========================
-# Map your raw class names
-# =========================
+
+
 CLASS_NAME_MAP = {
     "Healthy Wheat": ("Wheat", "healthy"),
     "Wheat aphid": ("Wheat", "Aphid"),
@@ -78,12 +82,12 @@ CLASS_NAME_MAP = {
     "Grape___Esca_(Black_Measles)": ("Grape", "Esca_Black_Measles"),
     "Grape___healthy": ("Grape", "healthy"),
     "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": ("Grape", "Leaf_blight_Isariopsis_Leaf_Spot"),
-    
+
     "Orange___healthy": ("Orange", "healthy"),
     "Orange___Haunglongbing_(Citrus_greening)": ("Orange", "Citrus_greening"),
     "Orange___Canker": ("Orange", "Canker"),
     "Orange___Black_spot": ("Orange", "Black_spot"),
-    
+
     "Peach___Bacterial_spot": ("Peach", "Bacterial_spot"),
     "Peach___healthy": ("Peach", "healthy"),
 
@@ -107,11 +111,6 @@ CLASS_NAME_MAP = {
     "olive_peacock_spot": ("Olive", "Peacock_spot"),
 }
 
-# =========================
-# Disease -> likely months
-# These only guide date choice.
-# Weather values still come from API.
-# =========================
 PROFILE_MONTHS = {
     "healthy": [3, 4, 5],
     "rust": [2, 3, 4, 11, 12],
@@ -129,15 +128,15 @@ PROFILE_MONTHS = {
     "default": [3, 4, 5, 10],
 }
 
-# =========================
-# Helpers
-# =========================
+
+
 def list_images(base_dir: Path):
     image_paths = []
 
     for split in ["train", "val", "test"]:
         split_dir = base_dir / split
         if not split_dir.is_dir():
+            print(f"Warning: split folder not found: {split_dir}")
             continue
 
         for root, _, files in os.walk(split_dir):
@@ -151,14 +150,6 @@ def list_images(base_dir: Path):
 
 
 def normalize_label_from_rel_path(rel_path: str):
-    """
-    Expected common structure:
-        train/ClassName/image.jpg
-        val/ClassName/image.jpg
-        test/ClassName/image.jpg
-
-    If there are deeper nested folders, the class folder is assumed to be parts[1].
-    """
     parts = rel_path.split("/")
 
     if len(parts) < 3:
@@ -175,7 +166,6 @@ def normalize_label_from_rel_path(rel_path: str):
         crop, disease = class_name.split("___", 1)
         return split_name, crop, disease
 
-    # Fallback: try simple normalization
     return split_name, class_name, class_name
 
 
@@ -220,8 +210,31 @@ def choose_realistic_datetime(disease_name: str):
     year = random.randint(YEAR_START, YEAR_END)
     month = random.choice(months)
     day = random.randint(1, 28)
-    hour = random.randint(6, 17)  # daytime hours
+    hour = random.randint(6, 17)
     return datetime(year, month, day, hour, 0, 0)
+
+
+def choose_jordan_location(crop_name: str):
+
+
+
+
+    crop = (crop_name or "").lower()
+
+    if crop in ["olive", "grape", "apple", "peach"]:
+        preferred = ["Irbid", "Balqa", "Ajloun", "Karak", "Madaba"]
+    elif crop in ["tomato", "potato", "eggplant", "cauliflower", "orange"]:
+        preferred = ["Jordan_Valley", "Irbid", "Mafraq", "Zarqa", "Madaba"]
+    elif crop in ["wheat", "maize"]:
+        preferred = ["Mafraq", "Irbid", "Karak", "Ma'an"]
+    else:
+        preferred = list(JORDAN_LOCATIONS.keys())
+
+    preferred = [x for x in preferred if x in JORDAN_LOCATIONS]
+
+    city = random.choice(preferred)
+    lat, lon = JORDAN_LOCATIONS[city]
+    return city, lat, lon
 
 
 def fetch_hourly_weather_for_day(lat, lon, day_str, timezone):
@@ -268,7 +281,6 @@ def build_hourly_lookup(api_json):
 
 
 def fallback_weather_from_month(month):
-    # only used if API fails for a row
     if month in [12, 1, 2]:
         return {
             "temp_c": 12,
@@ -305,26 +317,24 @@ def fallback_weather_from_month(month):
     }
 
 
-# =========================
-# Main
-# =========================
+
 def generate_metadata():
     if not DATASET_PATH.is_dir():
         raise RuntimeError(f"Dataset path not found: {DATASET_PATH}")
 
     image_rel_paths = list_images(DATASET_PATH)
+
     if not image_rel_paths:
         raise RuntimeError(f"No images found under: {DATASET_PATH}")
 
     print(f"Found {len(image_rel_paths)} images.")
 
-    # Quick sanity check
     print("\nSample path parsing:")
     for rel_path in image_rel_paths[:10]:
         print(f"{rel_path} -> {normalize_label_from_rel_path(rel_path)}")
 
-    image_datetimes = {}
-    unique_days = set()
+    image_info = {}
+    unique_location_days = set()
     parse_failures = 0
 
     for rel_path in image_rel_paths:
@@ -332,46 +342,56 @@ def generate_metadata():
 
         if crop is None or disease is None:
             parse_failures += 1
+            split_name = rel_path.split("/")[0]
             crop = "Unknown"
             disease = "default"
 
         dt = choose_realistic_datetime(disease)
+        city, lat, lon = choose_jordan_location(crop)
 
-        image_datetimes[rel_path] = {
+        image_info[rel_path] = {
             "split": split_name,
             "crop": crop,
             "disease": disease,
             "dt": dt,
+            "city": city,
+            "latitude": lat,
+            "longitude": lon,
         }
 
-        unique_days.add(dt.strftime("%Y-%m-%d"))
+        day_str = dt.strftime("%Y-%m-%d")
+        unique_location_days.add((city, lat, lon, day_str))
 
-    print(f"\nNeed API calls for {len(unique_days)} unique days.")
+    print(f"\nNeed API calls for {len(unique_location_days)} unique location-days.")
     print(f"Label parse failures: {parse_failures}")
 
-    daily_cache = {}
-    failed_days = 0
+    weather_cache = {}
+    failed_fetches = 0
 
-    for day_str in tqdm(sorted(unique_days), desc="Fetching Open-Meteo weather"):
+    for city, lat, lon, day_str in tqdm(sorted(unique_location_days), desc="Fetching Open-Meteo weather"):
+        cache_key = (city, day_str)
+
         try:
-            api_json = fetch_hourly_weather_for_day(LATITUDE, LONGITUDE, day_str, TIMEZONE)
-            daily_cache[day_str] = build_hourly_lookup(api_json)
+            api_json = fetch_hourly_weather_for_day(lat, lon, day_str, TIMEZONE)
+            weather_cache[cache_key] = build_hourly_lookup(api_json)
+
         except Exception as e:
-            print(f"Failed API fetch for {day_str}: {e}")
-            daily_cache[day_str] = {}
-            failed_days += 1
+            print(f"Failed API fetch for {city} {day_str}: {e}")
+            weather_cache[cache_key] = {}
+            failed_fetches += 1
 
     rows = []
     api_missing = 0
 
     for rel_path in tqdm(image_rel_paths, desc="Building CSV"):
-        info = image_datetimes[rel_path]
+        info = image_info[rel_path]
         dt = info["dt"]
 
         day_str = dt.strftime("%Y-%m-%d")
         hour_key = dt.strftime("%Y-%m-%dT%H:00")
+        cache_key = (info["city"], day_str)
 
-        weather = daily_cache.get(day_str, {}).get(hour_key)
+        weather = weather_cache.get(cache_key, {}).get(hour_key)
 
         if weather is None:
             api_missing += 1
@@ -379,28 +399,46 @@ def generate_metadata():
 
         rows.append({
             "image_rel_path": rel_path,
+            "split": info["split"],
+            "crop_name": info["crop"],
+            "disease_name": info["disease"],
+            "random_datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
+            "city": info["city"],
+            "latitude": info["latitude"],
+            "longitude": info["longitude"],
             "temp_c": weather["temp_c"],
             "humidity_pct": weather["humidity_pct"],
             "wind_m_s": weather["wind_m_s"],
             "precip_mm": weather["precip_mm"],
             "soil_moisture_pct": weather["soil_moisture_pct"],
-            "random_datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
-            "crop_name": info["crop"],
-            "disease_name": info["disease"],
         })
 
     df = pd.DataFrame(rows)
+
     df = df[
-        ["image_rel_path"] + FEATURE_COLS + ["random_datetime", "crop_name", "disease_name"]
+        [
+            "image_rel_path",
+            "split",
+            "crop_name",
+            "disease_name",
+            "random_datetime",
+            "city",
+            "latitude",
+            "longitude",
+        ] + FEATURE_COLS
     ]
 
     df.to_csv(OUTPUT_CSV, index=False)
 
     print(f"\nSaved CSV to: {OUTPUT_CSV}")
-    print(f"Failed API day fetches: {failed_days}")
+    print(f"Failed API fetches: {failed_fetches}")
     print(f"Rows where exact API hour was missing and fallback was used: {api_missing}")
+
     print("\nHead of CSV:")
     print(df.head())
+
+    print("\nLocation distribution:")
+    print(df["city"].value_counts())
 
     print("\nClass distribution sample:")
     print(df[["crop_name", "disease_name"]].value_counts().head(20))
