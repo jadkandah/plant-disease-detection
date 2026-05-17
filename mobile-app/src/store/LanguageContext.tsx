@@ -31,6 +31,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     loadLanguage();
+    setLanguage(language);
   }, []);
 
   const loadLanguage = async () => {

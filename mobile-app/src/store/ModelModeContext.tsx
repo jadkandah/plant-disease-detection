@@ -30,6 +30,7 @@ export const ModelModeProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     loadModelMode();
+    setModelMode(selectedModelMode);
   }, []);
 
   const loadModelMode = async () => {

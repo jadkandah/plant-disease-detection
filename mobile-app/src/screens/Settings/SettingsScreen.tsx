@@ -1,27 +1,38 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight, HelpCircle, Info, Cloud, CloudOff } from 'lucide-react-native';
 import { useTranslation } from '../../store/LanguageContext';
 import { useModelMode } from '../../store/ModelModeContext';
+import { Platform } from 'react-native';
 
 export default function SettingsScreen() {
   const { t, language, setLanguage, isRTL } = useTranslation();
   const { setModelMode, isOnlineMode, canUseOnlineMode } = useModelMode();
 
-  const handleHelpSupport = () => {
+const handleHelpSupport = () => {
+  if (Platform.OS === 'web') {
+    window.alert('Contact us via email at: support@plantdisease.com');
+  } else {
     Alert.alert(
       t('settings.helpSupport'),
-      isRTL ? 'تواصل معنا عبر البريد الإلكتروني: support@plantdisease.com' : 'Contact us via email at: support@plantdisease.com'
+      'Contact us via email at: support@plantdisease.com'
     );
-  };
+  }
+};
 
-  const handleAbout = () => {
+const handleAbout = () => {
+  const message = `${t('settings.version')}\n${t('settings.gradProject')}`;
+
+  if (Platform.OS === 'web') {
+    window.alert(`${t('settings.about')}\n\n${message}`);
+  } else {
     Alert.alert(
       t('settings.about'),
-      `${t('settings.version')}\n${t('settings.gradProject')}`
+      message
     );
-  };
+  }
+};
 
   return (
     <SafeAreaView style={styles.container}>

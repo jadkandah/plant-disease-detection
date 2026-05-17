@@ -70,6 +70,8 @@ export default function CameraScreen({ navigation }: any) {
           return;
         }
         const processedUri = preprocessed.processedUri;
+        console.log('isConnected:', isConnected);
+      console.log('isOnlineMode:', isOnlineMode);
 
         if (!isConnected || !isOnlineMode) {
           setStatusMessage(t('gallery.analyzingImage'));
@@ -120,7 +122,7 @@ export default function CameraScreen({ navigation }: any) {
       } finally {
         setIsProcessing(false);
       }
-    }
+    }0
   };
 
   const toggleCameraFacing = () => {

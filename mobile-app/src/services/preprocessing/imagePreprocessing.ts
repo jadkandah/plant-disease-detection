@@ -21,9 +21,7 @@ export interface PreprocessResult {
 
   reason: string;
 
-
-
-
+  
   processedUri: string;
 }
 

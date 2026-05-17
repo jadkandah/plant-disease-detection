@@ -16,7 +16,6 @@ def get_numeric_series(df: pd.DataFrame, col: str) -> pd.Series:
         return pd.to_numeric(df[col], errors="coerce")
     return pd.Series([float("nan")] * len(df), index=df.index)
 
-
 def safe_normalize(series: pd.Series, higher_is_better: bool = True) -> pd.Series:
     series = pd.to_numeric(series, errors="coerce")
 
@@ -32,13 +31,12 @@ def safe_normalize(series: pd.Series, higher_is_better: bool = True) -> pd.Serie
         return norm
     return 1.0 - norm
 
-
 def load_experiment_runs(experiment_name: str) -> pd.DataFrame:
     exp = mlflow.get_experiment_by_name(experiment_name)
     if exp is None:
         print(f"Experiment not found: {experiment_name}")
         return pd.DataFrame()
-
+    
     runs = mlflow.search_runs(
         experiment_ids=[exp.experiment_id],
         output_format="pandas"
