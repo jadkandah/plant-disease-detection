@@ -114,7 +114,6 @@ CLASS_NAME_MAP = {
 }
 
 PROFILE_MONTHS = {
-    "healthy": [3, 4, 5],
     "rust": [2, 3, 4, 11, 12],
     "blight": [2, 3, 4, 10, 11, 12],
     "mildew": [2, 3, 4, 10, 11],
