@@ -56,7 +56,7 @@
     "Wheat___Yellow_Rust": 53,
     "Wheat___healthy": 54
   },
-  "dataset_variant": "original",
+  "dataset_variant": "background_removed",
   "format": "onnx",
   "image_size": 512,
   "index_to_class": {
